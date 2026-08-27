@@ -16,6 +16,38 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — Request cost is capped by literals, and shared state is no longer written
+
+`num_docs` and `k` are bounded to 1–50, the transform context to 100 items of
+100 000 characters. The numbers are literals in `api/app.py`, deliberately not
+new environment settings: the previous change removed options that were declared
+and did nothing, and an unwired `MAX_NUM_DOCS` would have recreated exactly that.
+When someone needs to tune these, they become settings and get wired in the same
+change.
+
+The cost was measured rather than assumed. A request carrying 10 000 context
+items kept the endpoint working for 41 seconds; with the cap it is refused in
+0.03 seconds.
+
+`StreamingRAG` no longer writes to `self.rag.k` at all. It had been saving the
+value, overwriting it with the caller's `num_docs`, and restoring it at five
+different exit points — one of which, the outer `except`, did not restore, so a
+failed stream left the retrieval default rewritten for every later request in
+the process. Repairing that path would have left the other problem standing:
+`self.rag` is a singleton, so two concurrent streams corrupted each other even
+when both succeeded. `self.rag.k` turned out to be read in exactly one place, so
+a local variable replaces the whole mechanism.
+
+The LLM key is now reported instead of guessed at. The old check asked whether
+`OPENAI_API_KEY` was present in the environment, not whether it held anything,
+while `.env.example` ships it empty — so the most likely broken setup was also
+the one that produced no warning. Blank now counts as missing, the message goes
+through the logger rather than `print` at import time, and `/api/status` carries
+`llm_configured` so the state is visible before the first query instead of after
+it. It is still not a startup failure: `.env.example` documents on purpose that a
+missing key does not stop the stack. The defect was the silence, not the
+tolerance.
+
 ## 2026-08-27 — Three identical-looking settings got three different answers
 
 `MAX_QUESTION_LENGTH`, `TEMPLATES_PATH` and `template_id` were all reported as

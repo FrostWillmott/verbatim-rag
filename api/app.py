@@ -14,12 +14,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse as FastAPIStreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-# Check for OpenAI API key
-if "OPENAI_API_KEY" not in os.environ:
-    print("Warning: OPENAI_API_KEY environment variable not set.")
-    print("Please set your OpenAI API key using:")
-    print("export OPENAI_API_KEY=your_api_key_here")
-
 try:
     from verbatim_rag import (
         QueryResponse,
@@ -43,6 +37,24 @@ from api.services.rag_service import APIService
 logger = logging.getLogger(__name__)
 
 
+def llm_key_is_configured() -> bool:
+    """Whether a usable LLM key is present.
+
+    An empty value counts as missing: .env.example ships `OPENAI_API_KEY=` and
+    LLMClient falls back to a placeholder, so a blank key produces the same
+    failure as an absent one — only later, on the first query.
+    """
+    return bool(os.environ.get("OPENAI_API_KEY", "").strip())
+
+
+# Bounds on what a single request may cost. Without them one caller could ask for
+# unbounded retrieval or hand over an arbitrarily large context: before these
+# caps, 10 000 context items kept the transform endpoint busy for 41 seconds.
+MAX_RETRIEVED_DOCS = 50
+MAX_CONTEXT_ITEMS = 100
+MAX_CONTEXT_ITEM_CHARS = 100_000
+
+
 # Request/Response models
 class QueryRequestModel(BaseModel):
     # extra="forbid" so an unsupported parameter is refused instead of silently
@@ -52,7 +64,7 @@ class QueryRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question: str
-    k: Optional[int] = None
+    k: Optional[int] = Field(default=None, ge=1, le=MAX_RETRIEVED_DOCS)
     hybrid_weights: Optional[dict[str, float]] = None
     rrf_k: int = 60
     filter: Optional[str] = None
@@ -61,7 +73,7 @@ class QueryRequestModel(BaseModel):
 
 class StreamQueryRequestModel(BaseModel):
     question: str
-    num_docs: int = 5
+    num_docs: int = Field(default=5, ge=1, le=MAX_RETRIEVED_DOCS)
     hybrid_weights: Optional[dict[str, float]] = None
     rrf_k: int = 60
     filter: Optional[str] = None
@@ -71,6 +83,7 @@ class StreamQueryRequestModel(BaseModel):
 class StatusResponse(BaseModel):
     resources_loaded: bool
     message: str
+    llm_configured: bool = True
 
 
 class TemplateListResponse(BaseModel):
@@ -79,7 +92,7 @@ class TemplateListResponse(BaseModel):
 
 # RAG-agnostic verbatim transform models
 class VerbatimContextItem(BaseModel):
-    content: str = Field(..., min_length=1)
+    content: str = Field(..., min_length=1, max_length=MAX_CONTEXT_ITEM_CHARS)
     title: str | None = ""
     source: str | None = ""
     metadata: dict | None = None
@@ -87,7 +100,7 @@ class VerbatimContextItem(BaseModel):
 
 class VerbatimTransformRequest(BaseModel):
     question: str = Field(..., min_length=1)
-    context: list[VerbatimContextItem] = Field(default_factory=list)
+    context: list[VerbatimContextItem] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     answer: str | None = None  # ignored for now
 
 
@@ -111,6 +124,13 @@ def create_app() -> FastAPI:
     # force=True because this may run after logging is already configured; without
     # it basicConfig is a no-op and LOG_LEVEL would go on being ignored.
     logging.basicConfig(level=config.log_level.upper(), force=True)
+
+    if not llm_key_is_configured():
+        logger.warning(
+            "OPENAI_API_KEY is unset or empty. The stack still starts, by design, "
+            "but every query will fail on the first LLM call. /api/status reports "
+            "this as llm_configured=false."
+        )
 
     app = FastAPI(
         title="Verbatim RAG API",
@@ -192,10 +212,15 @@ async def get_status(
         return StatusResponse(
             resources_loaded=ready,
             message=f"RAG system {'ready' if ready else 'initializing'}",
+            llm_configured=llm_key_is_configured(),
         )
     except Exception as e:
         logger.error(f"Status check failed: {e}")
-        return StatusResponse(resources_loaded=False, message=f"System error: {str(e)}")
+        return StatusResponse(
+            resources_loaded=False,
+            message=f"System error: {str(e)}",
+            llm_configured=llm_key_is_configured(),
+        )
 
 
 @app.post("/api/query", response_model=QueryResponse)

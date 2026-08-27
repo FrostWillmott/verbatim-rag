@@ -100,6 +100,108 @@ class TestTemplateIdIsGone:
         assert response.status_code == 422
 
 
+class TestLlmKeyIsReportedNotGuessed:
+    """An empty key is as missing as an absent one, and both are visible early.
+
+    The stack deliberately starts without a key — .env.example says so — so the
+    fix is an honest signal, not a hard failure.
+    """
+
+    def test_absent_key_counts_as_unconfigured(self, monkeypatch):
+        from api.app import llm_key_is_configured
+
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+        assert llm_key_is_configured() is False
+
+    def test_empty_key_counts_as_unconfigured(self, monkeypatch):
+        from api.app import llm_key_is_configured
+
+        # .env.example ships OPENAI_API_KEY= — the likeliest way to end up broken.
+        monkeypatch.setenv("OPENAI_API_KEY", "")
+
+        assert llm_key_is_configured() is False
+
+    def test_whitespace_key_counts_as_unconfigured(self, monkeypatch):
+        from api.app import llm_key_is_configured
+
+        monkeypatch.setenv("OPENAI_API_KEY", "   ")
+
+        assert llm_key_is_configured() is False
+
+    def test_a_real_key_counts_as_configured(self, monkeypatch):
+        from api.app import llm_key_is_configured
+
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-something")
+
+        assert llm_key_is_configured() is True
+
+    def test_status_reports_the_key_state(self, api_client, monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "")
+
+        body = api_client.get("/api/status").json()
+
+        assert body["llm_configured"] is False
+
+
+class TestExpensiveRequestsAreBounded:
+    """A single caller should not be able to ask for unbounded retrieval."""
+
+    def test_num_docs_above_the_cap_is_rejected(self, api_client):
+        response = api_client.post(
+            "/api/query/stream", json={"question": "What is X?", "num_docs": 10**6}
+        )
+
+        assert response.status_code == 422
+
+    def test_num_docs_below_one_is_rejected(self, api_client):
+        response = api_client.post(
+            "/api/query/stream", json={"question": "What is X?", "num_docs": 0}
+        )
+
+        assert response.status_code == 422
+
+    def test_k_above_the_cap_is_rejected(self, api_client):
+        response = api_client.post("/api/query", json={"question": "What is X?", "k": 10**6})
+
+        assert response.status_code == 422
+
+    def test_context_item_count_is_capped(self, api_client):
+        response = api_client.post(
+            "/api/transform/verbatim",
+            json={
+                "question": "What is X?",
+                "context": [{"content": "x"} for _ in range(10_000)],
+            },
+        )
+
+        assert response.status_code == 422
+
+
+class TestStreamingLeavesSharedStateAlone:
+    def test_num_docs_does_not_change_the_shared_retrieval_default(self, fake_rag):
+        """The RAG object is a process-wide singleton.
+
+        Before the fix a stream that raised left self.rag.k rewritten for every
+        later request, so this asserts the value after an explicitly failing run.
+        """
+        import asyncio
+
+        from verbatim_rag.streaming import StreamingRAG
+
+        fake_rag.k = 5
+        fake_rag.index.query.side_effect = RuntimeError("retrieval exploded")
+        streamer = StreamingRAG(fake_rag)
+
+        async def drain():
+            return [stage async for stage in streamer.stream_query("q", num_docs=99)]
+
+        stages = asyncio.run(drain())
+
+        assert any(stage.get("type") == "error" for stage in stages)
+        assert fake_rag.k == 5
+
+
 class TestQueryEndpoint:
     """POST /api/query — synchronous route, bypasses APIService."""
 

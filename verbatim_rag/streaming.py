@@ -47,12 +47,13 @@ class StreamingRAG:
         Yields:
             Dictionary with type and data for each stage
         """
-        try:
-            # Set number of documents if specified
-            if num_docs is not None:
-                original_k = self.rag.k
-                self.rag.k = num_docs
+        # A local override, never a write to self.rag.k: the RAG object is a
+        # process-wide singleton, so mutating it here leaked one request's
+        # num_docs into every other request — permanently, if this generator
+        # raised before restoring it.
+        k = num_docs if num_docs is not None else self.rag.k
 
+        try:
             # Optional intent detection short-circuit
             decision = await self.rag._detect_intent_async(question)
             route = self.rag._decision_field(decision, "route")
@@ -60,14 +61,12 @@ class StreamingRAG:
                 answer = self.rag._decision_field(decision, "answer", "") or ""
                 result = self.rag._build_short_circuit_response(question, answer)
                 yield {"type": "answer", "data": result.model_dump(), "done": True}
-                if num_docs is not None:
-                    self.rag.k = original_k
                 return
 
             # Step 1: Retrieve documents and send them without highlights
             docs = self.rag.index.query(
                 text=question,
-                k=self.rag.k,
+                k=k,
                 filter=filter,
                 hybrid_weights=hybrid_weights,
                 rrf_k=rrf_k,
@@ -104,9 +103,6 @@ class StreamingRAG:
                     "error": f"span_extraction_failed: {e}",
                     "done": True,
                 }
-                # Restore k if needed
-                if num_docs is not None:
-                    self.rag.k = original_k
                 return
             extraction_duration = time.time() - extraction_start
 
@@ -156,8 +152,6 @@ class StreamingRAG:
                     "error": f"template_processing_failed: {e}",
                     "done": True,
                 }
-                if num_docs is not None:
-                    self.rag.k = original_k
                 return
             result = self.rag.response_builder.build_response(
                 question=question,
@@ -168,10 +162,6 @@ class StreamingRAG:
             )
 
             yield {"type": "answer", "data": result.model_dump(), "done": True}
-
-            # Restore original k value if we changed it
-            if num_docs is not None:
-                self.rag.k = original_k
 
         except Exception as e:
             yield {"type": "error", "error": str(e), "done": True}
