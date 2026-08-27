@@ -16,6 +16,38 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — Retrieved text is framed as data, and deliberately not sanitised
+
+Retrieved documents are attacker-controlled in any real deployment, and they were
+interpolated into the extraction prompt with no delimiter and no statement of
+what they are. In `extraction/default.txt` the rules came *before* the documents,
+which is the worst order: an injected instruction gets to speak last.
+
+The finding was narrower than it first looked, and the correction is worth
+keeping. `_verify_spans` checks every span against the text of the document it
+was attributed to, so a fabricated quote is dropped, and so is a quote
+misattributed to another document. The verbatim guarantee holds under injection.
+What does not hold is completeness: a document that persuades the model to return
+an empty array for itself is indistinguishable from a document with nothing
+relevant. For a product whose entire claim is provenance, silently omitting a
+source is the failure that matters, and it is the one verification cannot see.
+
+Both extraction prompts now fence the retrieved text, say plainly that it is data
+rather than instruction, put the authoritative rules after the block, and state
+that a document asking to be skipped must still be reported.
+
+Sanitising the text was rejected. Neutralising injection markers rewrites the
+text the model is asked to quote from, so any span containing a rewritten marker
+fails verbatim verification against the original — on a corpus of ACL papers,
+which includes papers about prompt injection, that trades a speculative attack
+for certain, silent data loss.
+
+Two limits, stated rather than implied: the delimiter is forgeable by a document
+that contains it, and the tests assert the instruction is present, not that a
+model obeys it. Proving the latter needs an evaluation set, which is a piece of
+work in its own right. This is defence in depth on top of span verification, not
+a replacement for it.
+
 ## 2026-08-27 — CI installs from the same pin set as everything else
 
 The docs workflow ran `pip install mkdocs-material "mkdocstrings[python]>=0.24"`
