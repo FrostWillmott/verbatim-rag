@@ -1,12 +1,16 @@
+import pathlib
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-# Tests marked requires_full_stack import verbatim_rag and api, which only exist
-# when the root package is installed. A marker alone is not enough: `-m` filters
-# after collection, and collection is what fails. Skipping them here keeps a
-# core-only environment — the CI matrix — from erroring on files it was never
-# meant to run.
+# Tests marked requires_full_stack import verbatim_rag, api or datasets, which
+# only exist when the root package is installed. A marker alone is not enough:
+# `-m` filters after collection, and collection is what fails.
+#
+# The list of which files those are is derived from the files themselves rather
+# than written out here. A hand-kept list was the first version and it rotted
+# within one commit: a new full-stack test was added, marked, and left out of the
+# list, and CI found it because collection died on the core-only matrix.
 #
 # The safeguard against these silently skipping everywhere is the coverage floor:
 # if the RAG and API tests stopped running, coverage would drop through it.
@@ -17,7 +21,15 @@ try:
 except ImportError:  # pragma: no cover - depends on how the environment was built
     _FULL_STACK = False
 
-collect_ignore_glob = [] if _FULL_STACK else ["test_rag_pipeline.py", "test_api_*.py"]
+
+def _modules_needing_the_full_stack() -> list[str]:
+    here = pathlib.Path(__file__).parent
+    return sorted(
+        path.name for path in here.glob("test_*.py") if "requires_full_stack" in path.read_text()
+    )
+
+
+collect_ignore = [] if _FULL_STACK else _modules_needing_the_full_stack()
 
 
 @pytest.fixture

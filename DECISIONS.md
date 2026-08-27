@@ -16,6 +16,31 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — The first real CI run found the same mistake a second time
+
+Pushing the branch and opening the pull request was the point at which anything
+here was checked by GitHub rather than by a local imitation of it. Six of seven
+jobs passed first time, including the ones with least local certainty — the full
+ML stack, the frontend, and both container builds.
+
+The matrix failed, on a mistake already made once on this branch and thought
+fixed. A new test needs `datasets`, which belongs to the root package and not to
+verbatim-core, so it was marked `requires_full_stack` — and a marker does not
+help, because `-m` filters after collection and collection is what dies. The same
+sentence is written in this file from the first time it happened.
+
+The fault was not the discipline, it was the design: `conftest.py` kept a
+hand-written list of which files need the root package, and that list rotted
+within one commit. It is now derived from the files themselves — any test module
+mentioning the marker is skipped when the root package is absent — so adding one
+cannot repeat this.
+
+Two runs also justify the push on their own terms. `rights-check` failed because
+the pull request body was missing the contribution-rights checkbox the repository
+requires, which no local reproduction would have caught. And the matrix failure
+was invisible to a local run precisely because a developer machine has the full
+stack installed.
+
 ## 2026-08-27 — An outside review found the showcase section destroyed, and a refusal that contradicted itself
 
 An independent evaluation of this branch, run with a different model and without
