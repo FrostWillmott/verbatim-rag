@@ -58,7 +58,7 @@ against the reports.
 | CI/CD | 32/100 | 6 | 1 | 3 | 2 | 0 |
 | Configuration hygiene | 40/100 | 4 | 3 | 1 | 0 | 0 |
 | Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
-| Dead code | 57/100 | 7 | 1 | 5 | 1 | 0 |
+| Dead code | 57/100 | 7 | 2 | 4 | 1 | 0 |
 | Cognitive debt | 59/100 | 5 | 2 | 2 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 3 | 1 | 1 | 0 |
 | Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
@@ -134,7 +134,7 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| DEAD-1 | Nine unreachable frontend components importing modules that no longer exist | HIGH | `todo` | Already filed upstream as issue #47. |
+| DEAD-1 | Nine unreachable frontend components importing modules that no longer exist | HIGH | `done` | **How:** the nine files deleted, plus `DocumentsContext.js` and its provider from `App.js` — `useDocuments` was called only from two of the nine. 1 541 lines across 10 files. Verified independently before deleting: `ChatPanel` and `DocumentPanel` had no importer at all, the other seven were reached only from inside the cluster. **Evidence:** the frontend cannot be built with the local Node 16, so it was built through `frontend/Dockerfile` (`node:20-alpine`) before and after. Both succeed. **Measured, and not what was expected:** the JS bundle shrank by 718 bytes — the dead components were already being tree-shaken, so there was no JS weight to reclaim. The CSS shrank from 31 681 to 22 038 bytes, **30%**, because Tailwind's `content` glob scans `src/**` and had been generating utilities for classes that only existed in unreachable files. Also filed upstream as issue #47. |
 | DEAD-2 | `template_id`, `MAX_QUESTION_LENGTH`, `TEMPLATES_PATH` declared but detached | HIGH | `done` | **How:** `template_id` removed from the request schema and from the service signatures; `QueryRequestModel` now sets `extra="forbid"`, so sending it returns 422 instead of a 200 with an unchanged answer. The other two were wired — see CFG-1. **Why this way:** the other two had a consumer to connect to, `template_id` had none: neither `VerbatimRAG.query` nor `query_async` takes such a parameter, so honouring it would mean changing the public API of the upstream library. Removing a parameter that never worked is the honest half of the same finding. |
 | DEAD-3 | Direct frontend dependencies with no live imports | MEDIUM | `todo` | `react-icons`, `cmdk`, several Radix primitives. Follows DEAD-1. |
 | DEAD-4 | API service layer partly bypassed; async signature out of sync | MEDIUM | `todo` | Understated in the report — this is a live defect, not untidiness. See BEY-1. |
