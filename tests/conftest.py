@@ -46,6 +46,74 @@ def sample_spans():
 
 
 @pytest.fixture
+def make_query_response():
+    """Factory for a minimal valid QueryResponse."""
+
+    def _make(question: str = "What is X?", answer: str = "X is Y."):
+        from verbatim_core.models import QueryResponse, StructuredAnswer
+
+        return QueryResponse(
+            question=question,
+            answer=answer,
+            structured_answer=StructuredAnswer(text=answer, citations=[]),
+            documents=[],
+        )
+
+    return _make
+
+
+@pytest.fixture
+def fake_rag(make_query_response):
+    """VerbatimRAG double that needs neither Milvus nor an LLM.
+
+    `index` is set because check_system_ready refuses the request without it.
+    """
+    rag = MagicMock()
+    rag.index = MagicMock()
+    rag.k = 5
+    rag.query.return_value = make_query_response()
+    rag.query_async = AsyncMock(return_value=make_query_response())
+    return rag
+
+
+@pytest.fixture
+def api_client(fake_rag):
+    """TestClient with the two constructor seams replaced by doubles.
+
+    Only get_rag_instance and get_template_manager are overridden: get_api_service
+    is left alone so the real APIService sits in the request path, which is where
+    the service layer's own defects live. The module-level singletons are reset
+    around each test because get_api_service caches its instance in a global.
+    """
+    from fastapi.testclient import TestClient
+
+    import api.dependencies as deps
+    from api.app import app
+    from api.config import APIConfig, get_config
+
+    def _reset_singletons():
+        deps._rag_instance = None
+        deps._template_manager = None
+        deps._api_service = None
+
+    _reset_singletons()
+    # Built with _env_file=None so the suite is hermetic: APIConfig otherwise reads
+    # whatever .env the developer happens to have, and the result differs between
+    # a clean checkout and a configured one.
+    app.dependency_overrides[get_config] = lambda: APIConfig(_env_file=None)
+    app.dependency_overrides[deps.get_rag_instance] = lambda: fake_rag
+    # A lambda, not MagicMock itself: FastAPI introspects the override's signature,
+    # and MagicMock's turns `args`/`kw` into required query parameters.
+    app.dependency_overrides[deps.get_template_manager] = lambda: MagicMock()
+
+    with TestClient(app) as client:
+        yield client
+
+    app.dependency_overrides.clear()
+    _reset_singletons()
+
+
+@pytest.fixture
 def make_search_result():
     """Factory for creating mock search result objects."""
 

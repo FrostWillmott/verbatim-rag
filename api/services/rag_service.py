@@ -3,7 +3,7 @@ RAG service implementation for the API layer
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 
 from verbatim_core.templates import TemplateManager
 from verbatim_rag import QueryResponse
@@ -35,11 +35,20 @@ class APIService:
         k: Optional[int] = None,
         hybrid_weights: Optional[Dict[str, float]] = None,
         rrf_k: int = 60,
+        filter: Optional[str] = None,
+        search_params: Optional[Dict[str, Any]] = None,
     ) -> QueryResponse:
         """Execute a query through the RAG system"""
         try:
             # Use the RAG system to process the query
-            response = self.rag.query(question, k=k, hybrid_weights=hybrid_weights, rrf_k=rrf_k)
+            response = self.rag.query(
+                question,
+                k=k,
+                hybrid_weights=hybrid_weights,
+                rrf_k=rrf_k,
+                filter=filter,
+                search_params=search_params,
+            )
             return response
         except Exception as e:
             logger.error(f"Query execution failed: {e}")
@@ -52,11 +61,18 @@ class APIService:
         k: Optional[int] = None,
         hybrid_weights: Optional[Dict[str, float]] = None,
         rrf_k: int = 60,
+        filter: Optional[str] = None,
+        search_params: Optional[Dict[str, Any]] = None,
     ) -> QueryResponse:
         """Execute an async query through the RAG system"""
         try:
             response = await self.rag.query_async(
-                question, k=k, hybrid_weights=hybrid_weights, rrf_k=rrf_k
+                question,
+                k=k,
+                hybrid_weights=hybrid_weights,
+                rrf_k=rrf_k,
+                filter=filter,
+                search_params=search_params,
             )
             return response
         except Exception as e:
