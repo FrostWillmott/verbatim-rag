@@ -219,3 +219,63 @@ Worth noting how the first was found: the verification of it was itself wrong at
 first. `git stash push` on an unmodified file returns success, so the `||`
 fallback never ran and the "pre-fix" comparison was silently testing the current
 code. Same class of error as the test it was checking.
+
+## Reconstructed scoring model
+
+Every report states its own arithmetic. Transcribing it makes the scores
+reproducible instead of taking them on trust, and lets the effect of this branch
+be computed rather than claimed.
+
+### Calibration
+
+The formulas were transcribed from the ten "Расчёт оценки" sections and fed the
+reports' **own** published inputs. If the transcription is right, each must
+return the published score exactly.
+
+| Report | Formula as published | Published | Recomputed |
+|---|---|---:|---:|
+| Codebase hygiene | `min(round(70/95×100), 100 − 2×10 − 3×3)` | 71 | 71 |
+| CI/CD | `round(35/70×100) − (8+3+3+3+1)` | 32 | 32 |
+| Test quality | `round(0.7×54 + 0.3×14)` | 42 | 42 |
+| Security | `min(100 − 45 − 16 − 2×6 − 2, 39)` | 25 | 25 |
+| Configuration | `round(30/55×100) − (8 + 2×3 + 1)` | 40 | 40 |
+| Dependency hygiene | `round(23/45×100) − 30 − 3` | 18 | 18 |
+| Dead code | `min(100 − 14 − 10 − 7 − 5 − 4 − 3, 59)` | 57 | 57 |
+| Cognitive debt | `round((7×.25 + 6×.20 + 6×.20 + 2×.10 + 6×.25)×10)` | 59 | 59 |
+| AI readiness | weighted sum of nine directions | 60 | 60 |
+| Open-source readiness | domain no-op | 100 | 100 |
+
+**Ten of ten reproduce exactly.** The model is transcribed, not guessed.
+
+### What can be recomputed, and what cannot
+
+Only where every input is mechanical. Where a score depends on re-rating
+criteria on a 0–5 or 0–10 scale, that is judgement about work I did myself, and
+scoring it here would be worth nothing.
+
+| Report | Before | After | Basis |
+|---|---:|---|---|
+| Security | 25 | **92** | Purely finding-driven. One medium and one low remain — SEC-3, refused with its argument, and SEC-5 |
+| Dead code | 57 | **59** | Four of six named deductions removed, raw score 91 — but the report's cap of 59 for "findings on several surfaces at once" still binds, because two surfaces remain |
+| Test quality | 42 | **49** | Only the coverage term is measurable: 14% → 38%, so 4.2 → 11.4 of the 30 points it contributes. Assumes the criteria term is unchanged, which is conservative |
+| Codebase hygiene | 71 | **≤ 84** | The finding half is mechanical; the total is `min(criteria, 84)` and the criteria half is judgement |
+| CI/CD, Configuration, Dependency hygiene, Cognitive debt, AI readiness | | not computed | Each turns on a criteria sum that only an independent assessor should re-rate |
+
+### Two effects of the instrument, not of the work
+
+Predicted before the numbers were run, so they cannot be mistaken for spin.
+
+**Security jumps out of proportion.** 25 → 92 is mostly the cap lifting: any
+confirmed critical finding forces the score below 40 regardless of everything
+else. Closing one finding released it. The underlying change is four findings, not
+sixty-seven points.
+
+**Dead code barely moves although most of it is gone.** 57 → 59 while the raw
+arithmetic says 91, because the multi-surface cap holds. The instrument is
+measuring breadth of remaining findings, not their weight.
+
+**Open-source readiness should now fall below 100.** Its 100 was a domain no-op
+for a fork with no delta of its own; this branch is exactly such a delta, so the
+report would score its fourteen criteria for real and land somewhere lower. That
+is the correct behaviour of the instrument, and worth saying before someone reads
+the old 100 as an achievement.

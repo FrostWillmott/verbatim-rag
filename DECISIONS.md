@@ -16,6 +16,37 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-28 — The audit's own scoring model, transcribed and calibrated
+
+Each report publishes its arithmetic. Transcribing all ten and feeding them the
+reports' own inputs reproduces every published score exactly — ten of ten. That
+turns the scores from something to be taken on trust into something reproducible,
+and it is the only reason the effect of this branch can be stated as a number at
+all.
+
+What is recomputed is limited on purpose. Security, dead code and the coverage
+term of test quality have mechanical inputs, so they are computed. Everything
+resting on a criteria sum rated 0–5 or 0–10 is not: re-rating those means scoring
+my own work, which is worth nothing whoever does the arithmetic. An independent
+assessor can do it with the transcribed model; I should not.
+
+Two of the movements are the instrument, not the work, and both were predicted
+before the numbers were run.
+
+Security goes 25 → 92, and most of that is a cap lifting rather than sixty-seven
+points of improvement: any confirmed critical finding forces the score under 40
+regardless of everything else, and closing one released it.
+
+Dead code goes 57 → 59 although four of its six named deductions are gone and the
+raw arithmetic says 91. The report's cap for "findings on several surfaces at
+once" still binds, because two surfaces remain. Applying their rule rather than
+routing around it is the point.
+
+The third prediction has no number: open-source readiness scored 100 as a domain
+no-op for a fork with no delta of its own. This branch is that delta, so the
+report would now score its fourteen criteria for real and land lower. Better said
+plainly than left for a reader to mistake the old 100 for an achievement.
+
 ## 2026-08-28 — transformers moved to 5.16.1, and predicting a side effect is not checking it
 
 The upgrade itself was undramatic. Three packages move on Linux — transformers,
