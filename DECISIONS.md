@@ -5,30 +5,29 @@ Newest entry at the top. See `documentation.md` in the rules-library for the
 convention. Don't edit past entries; if a decision is reversed, add a new one
 that supersedes it.
 
+Scope: decisions about **this project** — its code, configuration, dependencies,
+process. Decisions about the personal harness that happens to be checked in here
+— which rule modules apply, how the linter preset was adapted, editor settings —
+belong in their commit messages, not in this file. Someone reading this
+repository wants to know why the software is the way it is.
+
 <!--
 ## YYYY-MM-DD — <short title>
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
-## 2026-08-27 — `.aiignore` replaced by a mechanism that actually runs
+## 2026-08-27 — Secret files are blocked by an enforced rule, not a declared one
 
-The harness shipped a `.aiignore` listing `.env` among the files an AI assistant
-must not read. Nothing in this repository consumes it, and the proof was already
-in the session that questioned it: `.env` had been read twice, through Bash,
-while the file sat in the tree claiming otherwise. An artifact that looks like a
-guarantee and enforces nothing is worse than no artifact — this is the repo's own
-`inherited-codebases.md` rule turned on the harness that carries it.
+Reads of `.env`, `*.local` env files, `*.pem` and `*.key` are denied in
+`.claude/settings.json`. Verified rather than assumed: after the change the
+refusal comes back through both the file tool and Bash, which were the two routes
+that had in fact been reading `.env` earlier the same day.
 
-Replaced with `.claude/settings.json` `permissions.deny`, and verified rather
-than assumed: after the change, reading `.env` is refused both through the file
-tool and through Bash, which were the two routes actually used earlier.
-`.env.example` stays readable, because it is a tracked template the README points
-at and holds no secret.
-
-`.aiignore` was deleted rather than kept with a corrected header. Keeping both
-would leave two mechanisms for one job, which is the failure the same module
-forbids. If a tool that does read it is ever added here, it comes back with its
-consumer named.
+The repository previously carried a `.aiignore` listing the same paths, and it
+was deleted. Nothing here consumed it, so it enforced nothing while looking like
+a guarantee — and two mechanisms for one job is the failure this repository's own
+rules forbid. `.env.example` stays readable: it is a tracked template the README
+points at and holds no secret.
 
 ## 2026-08-27 — The first API test was written before the fix it proves
 
@@ -96,26 +95,6 @@ scepticism about the rest of the register.
 This closes CD-3, which asks for a repository-side note naming the authoritative
 source and where local divergence is recorded.
 
-## 2026-08-27 — A rules module for working in inherited codebases
-
-Two changes in this session had to be reverted for the same reason: a personal
-default was applied without first checking how the repository already did that
-job. A standalone `ruff.toml` shadowed the existing `[tool.ruff]`; a `uv.lock`
-duplicated a pinning mechanism the project already had in a different, pip-
-readable form. Neither was caught by review or by tests — both looked like
-routine setup.
-
-Twice is a pattern, and the pattern is not carelessness, so more care will not
-fix it. `.claude/rules/inherited-codebases.md` makes the missing step mandatory
-and mechanical: find the existing mechanism before adding one, never shadow a
-config without deleting it, name the consumer of any pin file before choosing
-its format, and measure what a new preset reports on code you did not write
-before adopting it. It also states the rule this session kept violating in
-spirit — preferring a tool is not a technical argument for introducing it.
-
-The module is written to be generic; it belongs back in the harness template,
-not only in this repository.
-
 ## 2026-08-27 — Dependency pinning follows the repository's existing lock idiom
 
 The root manifests had no pinned set, so local and CI installs resolved afresh
@@ -153,14 +132,14 @@ Known gap: CI still installs its tools unpinned and reads neither constraints
 file. Wiring it up closes the rest of this finding and part of the critical
 supply-chain one; it belongs to that work, not to this change.
 
-## 2026-08-27 — mypy deferred, not adopted (TODO)
+## 2026-08-27 — `make check` has no type-checking step (TODO)
 
-The harness wires `mypy --strict` into both `make check` and a pre-commit hook.
-Neither survives here: mypy is declared in no manifest, there is no
-`[tool.mypy]` section, and the inherited code has never been type-checked, so
-both gates would be red from the first commit and stay red. `make check` is
-lint + format + tests, and `make typecheck` prints a pointer to this entry
-rather than lying about what it ran.
+The verification gate is lint + format + tests. Type checking is deliberately
+absent: mypy is declared in no manifest, there is no `[tool.mypy]` section, and
+the inherited code has never been type-checked, so the step would be red from the
+first commit and stay red. A gate that can never pass trains everyone to ignore
+it. `make typecheck` prints a pointer to this entry rather than lying about what
+it ran.
 
 On a project I owned this would be a tracked task, not a deferral. Doing it
 properly means: add mypy to the dev extra, start from a non-strict
@@ -168,39 +147,35 @@ properly means: add mypy to the dev extra, start from a non-strict
 (`torch`, `transformers`, `pymilvus`), and tighten per-package from there. That
 is a work item of its own, not a side effect of installing a harness.
 
-## 2026-08-27 — Personal harness adapted to this repository, not adopted as-is
+## 2026-08-27 — The lint gate stays where the project already had it
 
-The harness (Makefile, pre-commit config, agent rule modules) targets a
-greenfield uv + FastAPI + PostgreSQL service. This repository is a fork of an
-upstream library built on Milvus, with no ORM and no type checking. Measured
-before adopting: the preset's ruff configuration — 11 rule groups, line-length
-88, target py312 — produced **838 errors and 52 of 73 files under reformatting
-against an upstream baseline of zero**, `make check` could never go green, and
-the pre-commit mypy hook would have blocked every commit.
+A stricter preset was measured against this tree before being considered: 11 rule
+groups, line-length 88, target py312 produced **838 errors and 52 of 73 files
+under reformatting, against an upstream baseline of zero**. The bulk is
+pyupgrade (~235), bugbear (28) and ruff-specific (14) — a mass rewrite of code
+this fork did not write, which would bury every real change in the diff.
 
-The upstream ruff gate was kept, and kept in `pyproject.toml` where this project
-already holds it: a standalone `ruff.toml` shadows `[tool.ruff]` entirely rather
-than merging with it, so adding one would have created a config conflict where
-none existed. Two additions only — `ASYNC`, which reports nothing today and
-guards a codebase that mixes sync and async paths, and `known-first-party`,
-which fixes `verbatim_core` being sorted as a third-party package because it
-lives under `packages/core/` and is invisible to ruff's `src` inference. The 11
-`I001` violations that surfaced were closed with the autofixer; that is the one
-place inherited code was touched, and the line is deliberate — import ordering
-has a provably correct fixer, unlike the semantic rewrites the wider rule set
-would have produced.
+So the configuration stays as the project had it and stays in `pyproject.toml`.
+A standalone `ruff.toml` is not added: ruff discovers it first and then ignores
+`[tool.ruff]` entirely rather than merging, so it would create a silent conflict
+where none existed. There is now a note next to the block saying so.
 
-Hooks run against the staged set only. Repo-wide they would rewrite 68 inherited
-files on whitespace alone, plus 3 more that ruff reformats in `examples/` and
-`scripts/`, none of which this branch owns. The `postgresql-pgvector`,
-`data-engineering` and `clean-architecture` rule modules were dropped as
-describing infrastructure this project does not have; the rest moved to
-`.claude/rules/`, where they are actually loaded.
+Two additions only. `ASYNC`, which reports nothing today and guards a codebase
+that genuinely mixes sync and async paths. And `known-first-party`, because
+`verbatim_core` lives under `packages/core/`, is invisible to ruff's `src`
+inference and was being sorted as a third-party package; the 11 `I001`
+violations that surfaced are closed with the autofixer.
 
-What the harness contributes that this codebase genuinely lacks is its
-LLM-security module. The prompt-injection surface — feeding retrieved document
-text straight into a model prompt — is covered by no gate in this repository,
-and by none of the ten audit reports either.
+Those 11 files are the one place inherited code was touched, and the line is
+deliberate: import ordering has a provably correct fixer, unlike the semantic
+rewrites the wider rule set would have produced. For the same reason the commit
+hooks run against the staged set only — repo-wide they would rewrite 68
+inherited files on whitespace alone, plus 3 more that ruff reformats in
+`examples/` and `scripts/`.
+
+`target-version` stays at `py310`: both manifests declare `requires-python
+>=3.10` and CI runs a 3.10/3.11/3.12 matrix, so a newer target would let
+pyupgrade emit syntax that breaks the oldest leg.
 
 ## 2026-08-27 — Audit remediation lives on a branch that is never merged
 

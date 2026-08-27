@@ -25,6 +25,12 @@ step.
   later. Each entry: date, the decision, the one-line reason. Don't rewrite
   history; if a decision is later reversed, add a new entry that supersedes
   the old one rather than editing it away.
+- Scope it to the project: its code, configuration, dependencies, process.
+  Decisions about your own harness — which rule modules apply here, how a linter
+  preset was adapted, editor or agent settings — go in their commit messages,
+  not in this log. Someone reading the repository wants to know why the software
+  is the way it is, not how your tooling was assembled. The test: would this
+  entry still matter to a contributor who never uses your setup?
 - If the project's CLAUDE.md already has an inline "Key design decisions"
   section, treat `DECISIONS.md` as the durable log and the CLAUDE.md section
   as at most a short pointer to it — don't maintain the same information in
