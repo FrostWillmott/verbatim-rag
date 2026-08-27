@@ -53,12 +53,12 @@ against the reports.
 
 | Audit | Score | Findings | done | todo | rejected / deferred | n/a |
 |---|---:|---:|---:|---:|---:|---:|
-| Dependency hygiene | 18/100 | 10 | 1 | 7 | 2 | 0 |
-| Security | 25/100 | 5 | 0 | 4 | 1 | 0 |
-| CI/CD | 32/100 | 6 | 0 | 4 | 2 | 0 |
-| Configuration hygiene | 40/100 | 4 | 0 | 4 | 0 | 0 |
+| Dependency hygiene | 18/100 | 10 | 2 | 6 | 2 | 0 |
+| Security | 25/100 | 5 | 2 | 2 | 1 | 0 |
+| CI/CD | 32/100 | 6 | 1 | 3 | 2 | 0 |
+| Configuration hygiene | 40/100 | 4 | 2 | 2 | 0 | 0 |
 | Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
-| Dead code | 57/100 | 7 | 0 | 6 | 1 | 0 |
+| Dead code | 57/100 | 7 | 1 | 5 | 1 | 0 |
 | Cognitive debt | 59/100 | 5 | 1 | 3 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 0 | 4 | 1 | 0 |
 | Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
@@ -73,7 +73,7 @@ being true the moment this branch exists.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| SEC-1 | `docs.yml` installs unpinned public packages in a job with `contents: write` | critical | `todo` | The deploy job cannot be exercised from a pull request (it triggers on push to `main` only), so the fix will be a reviewed but unrun diff. To be stated plainly rather than claimed as verified. |
+| SEC-1 | `docs.yml` installs unpinned public packages in a job with `contents: write` | critical | `done` | **How:** every `pip install` in both workflows now runs against `dev-constraints.txt`, the same generated pin set `make install` uses; the tools were added to the `dev` extra so one file covers local, CI and docs. **Why this way:** it is the mechanism this repository already uses — `docker/constraints.txt` is produced by the same `uv pip compile` and consumed by the Dockerfile as `pip install -c`. **Evidence:** the deploy job itself only runs on push to `main`, so it could not be exercised from a pull request; instead its exact install command was run locally against a clean venv with pip, and resolved to the pinned `mkdocs-material 9.7.7`, `mkdocstrings 1.0.6`, `mkdocs 1.6.1`. **What this does not do:** version pinning stops a freshly published release from being pulled; it is not hash verification. `--generate-hashes` with `--require-hashes` is the next increment. |
 | SEC-2 | `trust_remote_code=True` with no pinned `revision` — 7 call sites | high | `todo` | Confirmed in `packages/core/verbatim_core/extractors.py` (4), `verbatim_rag/rerankers.py` (2), `extractor_models/train.py` (1). |
 | SEC-3 | Raw Milvus filter expressions passed through unvalidated | medium | `rejected` | Replacing `filter: str` with a typed allowlist schema is a redesign of the library's public query API. Not a call to make unilaterally in a fork of someone else's project. |
 | SEC-4 | No bound on `num_docs` / context size; shared `rag.k` mutated per request | medium | `done` | **How:** `num_docs` and `k` are bounded to 1–50 and the transform context to 100 items of 100 000 characters. Measured: a request with 10 000 context items kept the endpoint busy **41 seconds** before the caps and is refused in **0.03 s** after. **Why this way:** literal caps rather than new settings — we had just finished removing options that were declared and did nothing, and an unwired `MAX_NUM_DOCS` would have recreated that problem. |
@@ -89,7 +89,7 @@ prompt, and no audit examines that surface. See "Beyond the audit" below.
 |---|---|---|---|---|
 | DEP-1 | `axios 1.13.2` — vulnerability cluster in a direct frontend dependency | high | `todo` | Already filed upstream as issue #48; fixable without `--force`. |
 | DEP-2 | `transformers 4.53.3` — model-loading / code-execution advisories | high | `deferred` | The only high-severity finding deliberately postponed. A 4.x → 5.x major upgrade of the ML stack cannot be verified in the available time without running model downloads; a blind bump that breaks model loading is worse than the open advisory. Last item in the plan — done only if time remains, and only with a real run. |
-| DEP-3 | CI tools installed unpinned; docs deploy holds write permission | high | `todo` | Same root cause as SEC-1; both close together. |
+| DEP-3 | CI tools installed unpinned; docs deploy holds write permission | high | `done` | **How:** `ruff`, `pytest`, `pytest-asyncio`, `build`, `twine` and `pip-audit` are declared in the `dev` extra and installed with `-c dev-constraints.txt`. Verified locally with pip: `ruff` resolved to the pinned 0.16.4, `build` to 1.5.0. **Why this way:** declaring them in the manifest keeps one source for the version and lets `make lock` carry them, rather than a second list maintained inside the workflow. The write permission on the deploy job stays — `mkdocs gh-deploy` needs it; what changed is that it no longer runs unpinned third-party install code. |
 | DEP-4 | `datasets 3.4.1` — CVE-2026-66007 | medium | `todo` | Regenerating `docker/constraints.txt` needs an explicit upgrade flag: `uv pip compile` preserves existing pins and will not raise them on its own. |
 | DEP-5 | `aiohttp 3.14.2` — transitive, out-of-bounds read | medium | `todo` | Same regeneration caveat as DEP-4. |
 | DEP-6 | `python-multipart 0.0.22` in a stale `api/requirements.txt` | medium | `todo` | Confirmed: the file is referenced by nothing — not the Dockerfile, not CI. Deleting it is likely the right fix, not bumping it. |
@@ -107,7 +107,7 @@ prompt, and no audit examines that surface. See "Beyond the audit" below.
 | CI-3 | Frontend build is not part of CI | medium | `todo` | |
 | CI-4 | Container images are never built in CI | medium | `todo` | |
 | CI-5 | Package release is fully manual | medium | `rejected` | Release automation for a fork that publishes nothing has no meaning. Belongs upstream. |
-| CI-6 | Runner image, action refs and pip installs allow version drift | low | `todo` | Overlaps DEP-3. |
+| CI-6 | Runner image, action refs and pip installs allow version drift | low | `done` | **How:** pip installs pinned via constraints (DEP-3); `actions/checkout` and `actions/setup-python` pinned to commit SHAs with the tag kept as a trailing comment. **Why this way:** a tag is mutable and an action runs as code inside the workflow, so it belongs in the same class as a package. `ubuntu-latest` is deliberately left floating: it is GitHub-maintained, pinning it buys maintenance work rather than supply-chain safety. |
 
 ## Configuration hygiene — 40/100
 

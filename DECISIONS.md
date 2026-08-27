@@ -16,6 +16,37 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — CI installs from the same pin set as everything else
+
+The docs workflow ran `pip install mkdocs-material "mkdocstrings[python]>=0.24"`
+in a job holding `contents: write`, which means a freshly published release of
+any of those packages, or of anything they depend on, executed install-time code
+in a job that can write to this repository. That was the audit's only critical
+finding.
+
+Closed by pointing every `pip install` in both workflows at
+`dev-constraints.txt`, and by declaring the release and audit tooling — `build`,
+`twine`, `pip-audit` — in the `dev` extra so one generated file covers local
+work, CI and docs alike. The alternative was a second list of versions
+maintained inside the workflow, which is the duplication this repository has
+been removing all day.
+
+Verified, not reviewed. The deploy job runs only on push to `main`, so it cannot
+be exercised from a pull request; instead its exact install command was run
+against a clean virtualenv with pip — the installer CI uses, not uv — and
+resolved to the pinned `mkdocs-material 9.7.7`, `mkdocstrings 1.0.6`,
+`mkdocs 1.6.1`. Worth stating plainly: version pinning prevents a fresh
+compromised release from being pulled, but it is not hash verification.
+`--generate-hashes` with `--require-hashes` is the next increment, not this one.
+
+Actions are pinned to commit SHAs with the tag left as a trailing comment, on the
+same reasoning: a tag is mutable and an action runs as code inside the workflow,
+so it belongs in the same class as a package. `ubuntu-latest` stays floating on
+purpose — it is GitHub-maintained, and pinning it buys maintenance work rather
+than supply-chain safety. The `contents: write` permission also stays, because
+`mkdocs gh-deploy` needs it; what changed is that it no longer sits next to
+unpinned third-party install code.
+
 ## 2026-08-27 — Request cost is capped by literals, and shared state is no longer written
 
 `num_docs` and `k` are bounded to 1–50, the transform context to 100 items of

@@ -50,7 +50,7 @@ install: $(BIN)/python
 # pip rejects editable entries inside a constraints file.
 # uv preserves existing pins: this will not raise versions on its own.
 lock:
-	uv pip compile pyproject.toml --extra dev --universal \
+	uv pip compile pyproject.toml --extra dev --extra docs --universal \
 	    --no-emit-package verbatim-core -o dev-constraints.txt
 
 install-hooks:
