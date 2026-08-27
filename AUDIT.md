@@ -113,7 +113,7 @@ prompt, and no audit examines that surface. See "Beyond the audit" below.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| CFG-1 | Declared API settings do not affect the container run path | high | `todo` | Confirmed: `MAX_QUESTION_LENGTH` is never read (`rag_service.py:29` hardcodes `1000`); `host`/`port`/`log_level` are read only in the `__main__` block, which the Dockerfile bypasses by invoking uvicorn directly. |
+| CFG-1 | Declared API settings do not affect the container run path | high | `todo` | Confirmed, and worse than reported — see BEY-6: the `API_*` names were inert entirely, which is now fixed. What remains: `MAX_QUESTION_LENGTH` is still never read (`rag_service.py:29` hardcodes `1000`), and `host`/`port`/`log_level` are read only in the `__main__` block, which the Dockerfile bypasses by invoking uvicorn directly. |
 | CFG-2 | `.env.example`, README, Compose and code defaults disagree | medium | `todo` | `INDEX_PATH` (`./index.db` vs `/data/index.db`) and `FRONTEND_PORT` (8080 vs 80). The port half is already fixed upstream in PR #46 — will be fixed here as well *and* cross-referenced, so the register does not read as if the work were new. |
 | CFG-3 | Configuration errors surface late or silently | medium | `todo` | Missing LLM key warns but does not stop startup; absent `TEMPLATES_PATH` falls back silently. |
 | CFG-4 | Runtime decisions hidden as code constants | low | `todo` | Model, endpoint, embedding and collection name in `api/dependencies.py`. Decide per value: promoted to a documented setting, or marked as a deliberate demo constant. |
@@ -176,12 +176,14 @@ prompt, and no audit examines that surface. See "Beyond the audit" below.
 
 ## Beyond the audit
 
-Found while verifying the reports against the tree. None of these appear in any
-of the ten documents.
+Found while verifying the reports against the tree, and while writing the first
+API test. None of these appear in any of the ten documents.
 
 | ID | Finding | Status | Note |
 |---|---|---|---|
-| BEY-1 | `/api/query_async` returns 500 on every call | `todo` | `api/app.py:242` passes `filter=` and `search_params=` to `APIService.query_async`, whose signature accepts neither. The `TypeError` is swallowed by a broad `except Exception` and re-raised as a 500. The endpoint has never worked. |
+| BEY-1 | `/api/query_async` returns 500 on every call | `done` | **How:** `APIService.query`/`query_async` now accept `filter` and `search_params` and forward them, matching what the route already passed. Two contract tests pin it; against the parent commit they fail with `assert 500 == 200`. **Why this way:** the alternative was to point the route at `rag.query_async` directly, as seven of the eight routes already do. That trades a signature fix for a change of which layer serves a request, with no user-visible benefit and a real behaviour risk. Which layer should own the request path is a design question for the maintainer, recorded under BEY-2. |
 | BEY-2 | Two near-duplicate async endpoints, one broken | `todo` | `/api/query_async` goes through the service layer and fails; `/api/query/async` bypasses it and works. |
 | BEY-3 | `rag.k` is not restored when a stream raises | `todo` | `streaming.py` restores the shared value on the success path only; see SEC-4. |
-| BEY-4 | Prompt-injection surface is covered by no gate and by no audit | `todo` | Retrieved document text goes straight into an LLM prompt. The harness rule module treats this as untrusted input by default; the ten reports do not mention it. |
+| BEY-4 | Prompt-injection surface is covered by no gate and by no audit | `todo` | `extractors.py:524` joins raw document text and `prompts/extraction/default.txt` interpolates it as `{{ documents }}` — last, after every rule, with no delimiter and no instruction to treat it as data. The risk is not generic: an injected instruction makes the model return spans that are not in the source, which breaks the provenance guarantee the product exists for. |
+| BEY-5 | `import api.app` raises whenever a `.env` holds `OPENAI_API_KEY` | `done` | Found by writing the first API test. `APIConfig` inherits pydantic-settings' default `extra="forbid"`, and `create_app()` calls `get_config()` at import time — so following the README (`cp .env.example .env`, add the key) makes `uvicorn api.app:app` fail before it serves anything. Docker hides it because `.dockerignore` drops `.env` and the values arrive as environment variables instead. **How:** `extra="ignore"`. **Why this way:** `.env` is shared with the rest of the stack by the README's own instructions, so unknown keys are expected input, not a configuration error. |
+| BEY-6 | Every documented `API_*` environment variable was inert | `done` | `Field(..., env="API_HOST")` is a Pydantic v1 idiom; v2 keeps it as schema metadata only. Measured before the fix: `API_HOST=1.2.3.4` left `host=0.0.0.0`, while the undocumented `HOST=5.6.7.8` worked. **How:** `validation_alias`, which is v2's equivalent. **Why this way:** the alternative was to rename the fields to match the accidental names, which would have made the code true by changing the documented contract instead of honouring it. This deepens CFG-1: the settings were not merely disconnected from the run path, their names did nothing. |

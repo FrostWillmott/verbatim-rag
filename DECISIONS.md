@@ -10,6 +10,53 @@ that supersedes it.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — The first API test was written before the fix it proves
+
+`/api/query_async` answered 500 to every request: the route passed `filter` and
+`search_params` to a service method whose signature accepted neither, and a broad
+`except Exception` turned the `TypeError` into a generic server error. The two
+contract tests that pin the correct behaviour were written first and committed
+together with the fix, so `make check` stays green at every commit while the
+evidence survives: check out the parent commit's `api/` and both fail with
+`assert 500 == 200`.
+
+The fix is the signature, not the routing. Seven of the eight routes already
+bypass `APIService` and call `rag.*` directly, so the tempting change was to make
+the eighth match them — but that swaps which layer serves a request for no
+user-visible gain, and the service layer's fate is a design question for the
+maintainer, not a side effect of a bug fix.
+
+The test fixtures build `APIConfig(_env_file=None)` on purpose. A suite whose
+result depends on the developer's own `.env` is not a suite.
+
+## 2026-08-27 — The documented local setup could not start the API at all
+
+Trying to write the first API test surfaced two defects nobody had gone looking
+for, neither of them in any of the ten reports.
+
+`APIConfig` inherited pydantic-settings' default `extra="forbid"`, and
+`create_app()` calls `get_config()` at import time rather than through dependency
+injection. So a `.env` containing `OPENAI_API_KEY` — the file the README
+instructs you to create — made `import api.app` raise outright, before any
+request. Docker never showed it: `.dockerignore` drops `.env`, so the values
+arrive as environment variables, which pydantic-settings does not police the same
+way.
+
+Separately, every `Field(..., env="API_HOST")` was a Pydantic v1 idiom that v2
+keeps only as schema metadata. Measured before the change: `API_HOST=1.2.3.4`
+left `host` at `0.0.0.0`, while the undocumented `HOST=5.6.7.8` worked. The
+`API_*` names were inert; the ones that happened to work did so only because the
+field name matched.
+
+Both were fixed by honouring the documented contract — `extra="ignore"` because
+`.env` is shared with the rest of the stack by the README's own instructions, and
+`validation_alias` because it is v2's equivalent of what the author meant. The
+alternative, renaming fields to match the accidental names, would have made the
+code true by quietly changing the contract instead of keeping it.
+
+This deepens CFG-1 rather than closing it: the finding said the settings do not
+reach the run path, and it turns out their names did nothing either.
+
 ## 2026-08-27 — Fork status recorded in the repository, not only in correspondence
 
 The premise of this work — that the audited findings describe upstream code — was

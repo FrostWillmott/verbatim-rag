@@ -9,28 +9,40 @@ from pydantic_settings import BaseSettings
 
 
 class APIConfig(BaseSettings):
-    """API configuration using Pydantic BaseSettings for environment variable handling"""
+    """API configuration using Pydantic BaseSettings for environment variable handling.
+
+    `validation_alias`, not `env`: the latter is a Pydantic v1 idiom that v2 keeps
+    only as schema metadata, so every name below used to be inert. Without the
+    aliases the fields bind to their own names instead, and the documented
+    API_HOST / API_PORT / API_DEBUG do nothing at all.
+    """
 
     # Server configuration
-    host: str = Field(default="0.0.0.0", env="API_HOST")
-    port: int = Field(default=8000, env="API_PORT")
-    debug: bool = Field(default=False, env="API_DEBUG")
+    host: str = Field(default="0.0.0.0", validation_alias="API_HOST")
+    port: int = Field(default=8000, validation_alias="API_PORT")
+    debug: bool = Field(default=False, validation_alias="API_DEBUG")
 
     # CORS configuration
-    cors_origins: list[str] = Field(default=["http://localhost:3000"], env="CORS_ORIGINS")
-    cors_allow_credentials: bool = Field(default=True, env="CORS_ALLOW_CREDENTIALS")
+    cors_origins: list[str] = Field(
+        default=["http://localhost:3000"], validation_alias="CORS_ORIGINS"
+    )
+    cors_allow_credentials: bool = Field(default=True, validation_alias="CORS_ALLOW_CREDENTIALS")
 
     # RAG system paths
-    index_path: Path = Field(default=Path("./index.db"), env="INDEX_PATH")
-    templates_path: Path = Field(default=Path("templates"), env="TEMPLATES_PATH")
+    index_path: Path = Field(default=Path("./index.db"), validation_alias="INDEX_PATH")
+    templates_path: Path = Field(default=Path("templates"), validation_alias="TEMPLATES_PATH")
 
     # API limits
-    max_question_length: int = Field(default=1000, env="MAX_QUESTION_LENGTH")
+    max_question_length: int = Field(default=1000, validation_alias="MAX_QUESTION_LENGTH")
 
     # Logging
-    log_level: str = Field(default="INFO", env="LOG_LEVEL")
+    log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 
-    model_config = {"env_file": ".env", "case_sensitive": False}
+    # extra="ignore" because .env is shared with the rest of the stack: README tells
+    # the user to put OPENAI_API_KEY there, and that key belongs to the LLM client,
+    # not to this model. pydantic-settings forbids unknown keys by default, so
+    # without this the documented setup made `import api.app` raise on the spot.
+    model_config = {"env_file": ".env", "case_sensitive": False, "extra": "ignore"}
 
 
 def get_config() -> APIConfig:
