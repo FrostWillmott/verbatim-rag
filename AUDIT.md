@@ -57,7 +57,7 @@ against the reports.
 | Security | 25/100 | 5 | 3 | 1 | 1 | 0 |
 | CI/CD | 32/100 | 6 | 1 | 3 | 2 | 0 |
 | Configuration hygiene | 40/100 | 4 | 3 | 1 | 0 | 0 |
-| Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
+| Test quality | 42/100 | 5 | 3 | 1 | 1 | 0 |
 | Dead code | 57/100 | 7 | 4 | 2 | 1 | 0 |
 | Cognitive debt | 59/100 | 5 | 2 | 2 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 3 | 1 | 1 | 0 |
@@ -124,11 +124,11 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| TST-1 | The RAG happy path (`verbatim_rag`) has no tests at all | — | `todo` | Largest single gap. Needs fake vector-store and embedding providers so it runs without external services. |
+| TST-1 | The RAG happy path (`verbatim_rag`) has no tests at all | — | `done` | **How:** `tests/test_rag_pipeline.py` runs documents in and a cited answer out, against doubles for the index, the span extractor and the LLM client — all three are constructor arguments of `VerbatimRAG`, so nothing is patched. Ten tests: ingestion reaches the index, the answer quotes the source verbatim, every citation's text is present in the document it points at, every highlight's offsets slice to its own text, `k` is honoured, and a question the corpus cannot answer yields no citations. **Checked for vacuity:** making the fake extractor return invented text fails exactly three of them — the verbatim, citation and offset assertions — so they exercise `_verify_spans` and the response builder rather than the doubles. **Coverage:** `verbatim_rag/core.py` 20% → 48%, `schema_adapter.py` 0% → 100%, project-wide 36% → 39%. The modest total is honest: the remaining mass is Milvus adapters, and testing those to move a number is what `testing.md` calls worthless. |
 | TST-2 | No contract tests for the FastAPI surface | — | `todo` | Highest value per hour: it is where the confirmed live bugs are, so the tests double as proof of the fixes. |
 | TST-3 | No coverage target; coverage measured ad hoc for core only | — | `todo` | Core measures 48%; project-wide is estimated at ~14%. |
 | TST-4 | No frontend test framework at all | — | `deferred` | Standing up Vitest or Playwright is a day of work by itself, and the frontend components most in need of testing are the ones scheduled for deletion under DEAD-1. Revisit only if the schedule holds. |
-| TST-5 | No fake-provider harness; test layers not separated | — | `todo` | Prerequisite for TST-1; lands with it. |
+| TST-5 | No fake-provider harness; test layers not separated | — | `done` | **How:** `tests/fakes.py` holds `FakeIndex`, `FakeSpanExtractor` and `FakeLLMClient`, reusable by any future test of the pipeline. `FakeSpanExtractor` deliberately returns text that really occurs in the document it was given, because the pipeline drops spans that fail verification and a double returning invented text would let a broken pipeline pass. **Not done, deliberately:** the `tests/unit` / `tests/integration` / `tests/e2e` split the report suggests. This repository keeps a flat `tests/` directory and imposing a new layout on inherited tests is the kind of unasked-for restructuring this branch has refused elsewhere. |
 
 ## Dead code — 57/100
 
