@@ -56,3 +56,5 @@ class TestDocumentedEnvironmentNames:
         assert config.host == "0.0.0.0"
         assert config.port == 8000
         assert config.max_question_length == 1000
+        # Deliberately relative: the container gets /data/index.db from Compose.
+        assert str(config.index_path) == "index.db"

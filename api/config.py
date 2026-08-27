@@ -29,6 +29,11 @@ class APIConfig(BaseSettings):
     cors_allow_credentials: bool = Field(default=True, validation_alias="CORS_ALLOW_CREDENTIALS")
 
     # RAG system paths
+    # Two defaults on purpose, for two different ways of running this. Directly,
+    # the database belongs next to the working directory; in the container it has
+    # to be the mounted volume, and Compose supplies /data/index.db. Collapsing
+    # them into one value would put the container's path on a direct run, or a
+    # non-persistent relative path inside the image.
     index_path: Path = Field(default=Path("./index.db"), validation_alias="INDEX_PATH")
     templates_path: Path = Field(default=Path("templates"), validation_alias="TEMPLATES_PATH")
 

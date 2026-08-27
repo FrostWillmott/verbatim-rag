@@ -158,7 +158,7 @@ export OPENAI_API_KEY=your_api_key_here
 1. **Document Processing**: Documents are processed using docling for format conversion and chonkie for chunking
 2. **Document Indexing**: Documents are indexed using vector embeddings (both dense and sparse)
 3. **Template Management**: Response templates are created and stored for common question types
-4. **Query Processing**: 
+4. **Query Processing**:
    - Relevant documents are retrieved
    - Key passages are extracted verbatim using either LLM-based or fine-tuned span extractors
    - Responses are structured using templates
@@ -272,7 +272,7 @@ OPENAI_API_KEY=your_key_here docker compose up --build
 |---|---|---|
 | `OPENAI_API_KEY` | (required) | OpenAI-compatible API key |
 | `INDEX_PATH` | `/data/index.db` | Milvus Lite database path in the container |
-| `FRONTEND_PORT` | `80` | Host port the frontend is published on |
+| `FRONTEND_PORT` | `8080` | Host port the frontend is published on |
 
 All of these can be set in `.env` (copy `.env.example`) or exported in the
 shell. CORS configuration is not needed: the browser only talks to nginx, which
@@ -283,7 +283,7 @@ via its own proxy).
 
 ```mermaid
 graph LR
-    A[Browser] -->|http://localhost| B[nginx :80]
+    A[Browser] -->|http://localhost:8080| B[nginx :80]
     B -->|/api/*| C[FastAPI :8000]
     C --> D[(Milvus Lite<br>/data/index.db)]
 ```
