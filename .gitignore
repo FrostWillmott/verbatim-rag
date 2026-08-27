@@ -216,3 +216,7 @@ Thumbs.db
 
 mockup/
 research-copilot/
+
+# Claude Code per-machine settings. Currently covered only by the maintainer's
+# global gitignore, which does not protect a fresh clone.
+.claude/settings.local.json

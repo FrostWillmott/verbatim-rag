@@ -11,7 +11,6 @@ import logging
 from typing import Any, Optional
 
 from verbatim_core.templates import TemplateManager
-
 from verbatim_rag.extractors import LLMSpanExtractor, SpanExtractor
 from verbatim_rag.index import VerbatimIndex
 from verbatim_rag.ingestion import schema_to_document

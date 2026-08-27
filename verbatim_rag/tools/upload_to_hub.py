@@ -10,6 +10,7 @@ import os
 
 from huggingface_hub import login
 from transformers import AutoTokenizer
+
 from verbatim_core.extractor_models.model import QAModel
 
 

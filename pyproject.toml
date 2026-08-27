@@ -38,18 +38,18 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.0.0",
     "PyYAML>=6.0",
-    
+
     # Vector storage and search
     "pymilvus>=2.6.3",
     "pymilvus[milvus_lite]",
-    
+
     # Embeddings
     "sentence-transformers>=5.0.0",
 
     # API and web
     "fastapi>=0.100.0",
     "uvicorn>=0.20.0",
-    
+
     # Utilities
     "tqdm>=4.65.0",
     "huggingface_hub>=0.16.0",
@@ -60,7 +60,9 @@ dependencies = [
 dev = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
+    "pytest-cov>=5.0.0",
     "ruff>=0.4.0",
+    "pre-commit>=3.7.0",
 ]
 docs = [
     "mkdocs-material>=9.0",
@@ -90,7 +92,23 @@ include = [
     "/pyproject.toml",
 ]
 
+[tool.uv.sources]
+# Read by `make lock`. Without it uv resolves verbatim-core from PyPI and pins
+# the published 0.2.8 into dev-constraints.txt, which then fights the editable
+# install of packages/core/ that CI, the Dockerfile and `make install` all use.
+# The key is uv-specific and ignored by pip, so `pip install .` still resolves
+# from the registry exactly as before.
+#
+# Note for whoever regenerates docker/constraints.txt next: that file currently
+# pins verbatim-core==0.2.8 because it predates this key. Regenerating it now
+# will drop that pin, since the package resolves to a local path. Verify the
+# image still builds before accepting the change.
+verbatim-core = { path = "packages/core", editable = true }
+
 [tool.ruff]
+# target-version stays at py310: both manifests declare requires-python >=3.10
+# and CI runs a 3.10/3.11/3.12 matrix, so a newer target would let pyupgrade
+# emit syntax that breaks the oldest leg.
 target-version = "py310"
 line-length = 100
 extend-exclude = [
@@ -98,8 +116,15 @@ extend-exclude = [
 ]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I"]
+# ASYNC added to the upstream set: the project mixes sync and async paths and
+# the group reports nothing on the current tree, so it costs nothing today.
+select = ["E", "F", "W", "I", "ASYNC"]
 ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+# verbatim_core lives under packages/core/ and is invisible to ruff's src
+# inference, so it was being sorted as a third-party package.
+known-first-party = ["verbatim_rag", "verbatim_core", "api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

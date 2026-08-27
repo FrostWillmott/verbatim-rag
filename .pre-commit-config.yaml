@@ -1,0 +1,35 @@
+# Hooks run against the staged set, never the whole tree. Repo-wide, ruff still
+# reports 11 findings and 3 files needing reformatting in examples/ and
+# scripts/, and the whitespace hooks would rewrite 68 more inherited files —
+# all outside this branch's scope. Use `make pre-commit`.
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+
+  # Ruff runs from .venv rather than from a rev-pinned mirror, so the hook and
+  # `make lint` are guaranteed to be the same binary. The version is declared
+  # once in pyproject.toml and resolved once in uv.lock; a `rev:` here would be
+  # a third place to keep in sync by hand.
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff
+        entry: .venv/bin/ruff check --fix
+        language: system
+        types: [python]
+      - id: ruff-format
+        name: ruff-format
+        entry: .venv/bin/ruff format
+        language: system
+        types: [python]
+
+  # The mypy hook from the harness template is intentionally absent. It ran
+  # `mypy .` over the whole repository with pass_filenames: false, which would
+  # block every commit in a codebase that has never been type-checked and where
+  # mypy is not a declared dependency. See DECISIONS.md (2026-08-27).

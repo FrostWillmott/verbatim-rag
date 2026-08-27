@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+
 from verbatim_core.extractor_models.dataset import QADataset
 
 # Set up logger
