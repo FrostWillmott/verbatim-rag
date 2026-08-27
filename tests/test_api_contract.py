@@ -99,6 +99,23 @@ class TestTemplateIdIsGone:
 
         assert response.status_code == 422
 
+    def test_the_streaming_route_refuses_unknown_fields_too(self, api_client):
+        # The route the live UI uses. Forbidding extras on /api/query alone would
+        # have left the honest-contract property off the one that matters most.
+        response = api_client.post(
+            "/api/query/stream", json={"question": "What is X?", "template_id": "anything"}
+        )
+
+        assert response.status_code == 422
+
+    def test_the_payload_the_live_ui_sends_is_still_accepted(self, api_client):
+        # frontend/src/contexts/ApiContext.js posts exactly these two fields.
+        response = api_client.post(
+            "/api/query/stream", json={"question": "What is X?", "num_docs": 5}
+        )
+
+        assert response.status_code == 200
+
 
 class TestLlmKeyIsReportedNotGuessed:
     """An empty key is as missing as an absent one, and both are visible early.
@@ -179,27 +196,52 @@ class TestExpensiveRequestsAreBounded:
 
 
 class TestStreamingLeavesSharedStateAlone:
-    def test_num_docs_does_not_change_the_shared_retrieval_default(self, fake_rag):
-        """The RAG object is a process-wide singleton.
+    """The RAG object is a process-wide singleton.
 
-        Before the fix a stream that raised left self.rag.k rewritten for every
-        later request, so this asserts the value after an explicitly failing run.
-        """
+    Before the fix, a stream that raised left self.rag.k rewritten for every later
+    request in the process, and two concurrent streams overwrote each other even
+    when both succeeded.
+    """
+
+    @staticmethod
+    def _drain(streamer, **kwargs):
         import asyncio
+
+        async def run():
+            return [stage async for stage in streamer.stream_query("q", **kwargs)]
+
+        return asyncio.run(run())
+
+    @staticmethod
+    def _streamer(fake_rag):
+        from unittest.mock import AsyncMock
 
         from verbatim_rag.streaming import StreamingRAG
 
+        # Awaitable, and returning None so the intent check does not short-circuit.
+        # Without this the generator dies on `await MagicMock()` before retrieval,
+        # and the test would pass for a reason that has nothing to do with k.
+        fake_rag._detect_intent_async = AsyncMock(return_value=None)
         fake_rag.k = 5
+        return StreamingRAG(fake_rag)
+
+    def test_num_docs_is_used_for_retrieval_without_being_stored(self, fake_rag):
+        streamer = self._streamer(fake_rag)
         fake_rag.index.query.side_effect = RuntimeError("retrieval exploded")
-        streamer = StreamingRAG(fake_rag)
 
-        async def drain():
-            return [stage async for stage in streamer.stream_query("q", num_docs=99)]
+        stages = self._drain(streamer, num_docs=99)
 
-        stages = asyncio.run(drain())
-
-        assert any(stage.get("type") == "error" for stage in stages)
+        assert [stage["type"] for stage in stages] == ["error"]
+        assert fake_rag.index.query.call_args.kwargs["k"] == 99
         assert fake_rag.k == 5
+
+    def test_the_shared_default_is_used_when_num_docs_is_omitted(self, fake_rag):
+        streamer = self._streamer(fake_rag)
+        fake_rag.index.query.side_effect = RuntimeError("retrieval exploded")
+
+        self._drain(streamer)
+
+        assert fake_rag.index.query.call_args.kwargs["k"] == 5
 
 
 class TestQueryEndpoint:

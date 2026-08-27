@@ -189,3 +189,33 @@ API test. None of these appear in any of the ten documents.
 | BEY-4 | Retrieved text enters the extraction prompt as instruction, not data | `done` | **Scope corrected while fixing it.** The first write-up here claimed injection could make the model return spans that are not in the source. It cannot: `_verify_spans` checks every span against the text of the document it was attributed to, so fabrication *and* misattribution are already dropped, and the default path additionally embeds documents as JSON. **What actually survives verification is suppression** — a document that persuades the model to return an empty array for itself is indistinguishable from a document with nothing relevant, and a provenance product that silently omits a source is failing at exactly its job. **How:** both extraction prompts now fence retrieved text in explicit markers, say it is data rather than instruction, place the authoritative rules *after* the block, and state that a document asking to be skipped must still be reported. **Why this way — no sanitisation:** neutralising injection markers would rewrite the text the model is asked to quote, and any span containing a rewritten marker would then fail verbatim verification. On a corpus of papers that includes papers about prompt injection, that trades a speculative attack for certain data loss. **Limits, stated plainly:** the delimiter is forgeable, and structural tests prove the instruction is present, not that a model obeys it. The real guarantee remains span verification; this is defence in depth on top of it. |
 | BEY-5 | `import api.app` raises whenever a `.env` holds `OPENAI_API_KEY` | `done` | Found by writing the first API test. `APIConfig` inherits pydantic-settings' default `extra="forbid"`, and `create_app()` calls `get_config()` at import time — so following the README (`cp .env.example .env`, add the key) makes `uvicorn api.app:app` fail before it serves anything. Docker hides it because `.dockerignore` drops `.env` and the values arrive as environment variables instead. **How:** `extra="ignore"`. **Why this way:** `.env` is shared with the rest of the stack by the README's own instructions, so unknown keys are expected input, not a configuration error. |
 | BEY-6 | Every documented `API_*` environment variable was inert | `done` | `Field(..., env="API_HOST")` is a Pydantic v1 idiom; v2 keeps it as schema metadata only. Measured before the fix: `API_HOST=1.2.3.4` left `host=0.0.0.0`, while the undocumented `HOST=5.6.7.8` worked. **How:** `validation_alias`, which is v2's equivalent. **Why this way:** the alternative was to rename the fields to match the accidental names, which would have made the code true by changing the documented contract instead of honouring it. This deepens CFG-1: the settings were not merely disconnected from the run path, their names did nothing. |
+
+## Review gate — API group
+
+The planned gate was an independent review agent. Five attempts died with
+`Connection lost mid-response`, at different steps and under two different
+advisor models, so the review was done by hand instead. That is weaker: it is the
+author checking his own work, and it is recorded as such. The remaining
+independent gates are the evaluation run and the final multi-agent review.
+
+Two things it changed:
+
+- **A test was passing for the wrong reason.** `TestStreamingLeavesSharedStateAlone`
+  set a `side_effect` on `index.query`, but the stream never reached it — the
+  generator died earlier on `await` against a plain `MagicMock`, so the assertion
+  held for a reason unrelated to `rag.k`. The fake now makes intent detection
+  awaitable, retrieval is actually reached, and the test additionally asserts the
+  `k` that was passed. Checked against the pre-fix `streaming.py`: it fails there
+  with `99 != 5`, which it did not do before.
+- **`extra="forbid"` covered the wrong route.** It was set on `QueryRequestModel`
+  only, so `/api/query/stream` — the one the live UI actually calls — still
+  accepted and ignored unknown fields, which is the exact defect DEAD-2 was about.
+  Extended to `StreamQueryRequestModel` and to `VerbatimTransformRequest`, and
+  deliberately *not* to `VerbatimContextItem`: that endpoint takes context from
+  any RAG, and those items legitimately carry keys this code does not know.
+  A test pins that the two fields the live UI sends are still accepted.
+
+Worth noting how the first was found: the verification of it was itself wrong at
+first. `git stash push` on an unmodified file returns success, so the `||`
+fallback never ran and the "pre-fix" comparison was silently testing the current
+code. Same class of error as the test it was checking.

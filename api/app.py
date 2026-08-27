@@ -72,6 +72,8 @@ class QueryRequestModel(BaseModel):
 
 
 class StreamQueryRequestModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     question: str
     num_docs: int = Field(default=5, ge=1, le=MAX_RETRIEVED_DOCS)
     hybrid_weights: Optional[dict[str, float]] = None
@@ -99,6 +101,11 @@ class VerbatimContextItem(BaseModel):
 
 
 class VerbatimTransformRequest(BaseModel):
+    # Forbidden at the top level, but deliberately not on VerbatimContextItem:
+    # this endpoint accepts context from any RAG, and those items legitimately
+    # carry keys we do not know about.
+    model_config = ConfigDict(extra="forbid")
+
     question: str = Field(..., min_length=1)
     context: list[VerbatimContextItem] = Field(default_factory=list, max_length=MAX_CONTEXT_ITEMS)
     answer: str | None = None  # ignored for now
