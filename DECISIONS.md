@@ -10,6 +10,25 @@ that supersedes it.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — Fork status recorded in the repository, not only in correspondence
+
+The premise of this work — that the audited findings describe upstream code — was
+explained by mail to the recruiter, which is the wrong place for it to live: the
+person who reviews the code is not the person who received the message. It now
+sits in the `Premise` section of `AUDIT.md` and will be repeated in the pull
+request description, which is what a reviewer opens first.
+
+No separate file for it. A fourth document beside `AUDIT.md`, `DECISIONS.md` and
+the rules directory would split one piece of context three ways.
+
+The section is kept to verifiable facts — the audited commit, the fork chain, the
+platform counters — rather than to argument. As repository context it lets a
+reader reach the conclusion themselves; written as a defence it would invite
+scepticism about the rest of the register.
+
+This closes CD-3, which asks for a repository-side note naming the authoritative
+source and where local divergence is recorded.
+
 ## 2026-08-27 — A rules module for working in inherited codebases
 
 Two changes in this session had to be reverted for the same reason: a personal

@@ -13,6 +13,28 @@ usually rejected for reasons visible only at the time. A row that says only
 This file tracks what happens to each finding. `DECISIONS.md` carries the longer
 reasoning behind the non-obvious calls; rows here link to it rather than repeat it.
 
+## Premise
+
+The reports were produced against `anastasiakrivova-stack/verbatim-rag`, a fork
+of this repository, which is itself a fork of `KRLabsOrg/verbatim-rag`. At the
+audited commit `88f510a` all three trees are identical: the reports' own platform
+data shows the audited copy at `ahead_by=0, behind_by=0` against its parent, and
+this repository's `main` is likewise `0/0` against `upstream/main`.
+
+The findings therefore describe upstream code. This fork existed as a base for
+pull requests rather than as a project of its own; the work it carries was
+merged upstream.
+
+That is what makes some findings unactionable from here rather than merely
+inconvenient — breaking changes to a public API, a deprecation policy for a
+compatibility layer, or the open-source report's suggestion to "add a delta of
+your own", which in practice means presenting someone else's library as your own
+project. Those rows are marked `rejected` with the reason rather than skipped.
+
+The branch is based on `88f510a` so every finding is reproducible from its
+starting point, and it is never merged: `main` stays a byte-identical mirror of
+upstream.
+
 ## Legend
 
 | Status | Meaning |
@@ -37,7 +59,7 @@ against the reports.
 | Configuration hygiene | 40/100 | 4 | 0 | 4 | 0 | 0 |
 | Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
 | Dead code | 57/100 | 7 | 0 | 6 | 1 | 0 |
-| Cognitive debt | 59/100 | 5 | 0 | 4 | 1 | 0 |
+| Cognitive debt | 59/100 | 5 | 1 | 3 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 0 | 4 | 1 | 0 |
 | Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
 | Open-source readiness | 100/100 | 0 | — | — | — | — |
@@ -124,7 +146,7 @@ prompt, and no audit examines that surface. See "Beyond the audit" below.
 |---|---|---|---|---|
 | CD-1 | No local entry point carrying product intent and safe-change boundaries | medium | `todo` | Same item as AIR-1; one `AGENTS.md` closes both. |
 | CD-2 | Executable specs strong for core, weak for full RAG / API / frontend | medium | `todo` | Same work as TST-1 and TST-2. |
-| CD-3 | Fork decisions not reconstructable without upstream history | medium | `todo` | A fork-authority note, plus this file and `DECISIONS.md`. |
+| CD-3 | Fork decisions not reconstructable without upstream history | medium | `done` | **How:** the Premise section above names the authoritative source, this fork's role, and where divergence is recorded — rows in this file and entries in `DECISIONS.md`. **Why this way:** a note inside the repository rather than a link out, because the finding is precisely that a reader holding only the fork cannot tell inherited code from ours. Kept to verifiable facts — the audited commit, the fork chain, the platform counters — so it reads as context rather than as a defence of the work. |
 | CD-4 | Repository identity points at upstream more strongly than at the fork | medium | `rejected` | `mkdocs.yml` and `CONTRIBUTING.md` correctly identify `KRLabsOrg/verbatim-rag`: that *is* the project. Rewriting them to point at the fork would misrepresent authorship. The honest fix is CD-3 — say plainly that this is a fork and what diverges. |
 | CD-5 | Historical design context (`docs/verbatim_blog.md`) outside the docs nav | low | `todo` | |
 
