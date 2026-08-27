@@ -1,4 +1,9 @@
-FROM python:3.11-slim
+# Pinned by digest, not by tag: a tag is mutable, so `python:3.11-slim` today and
+# tomorrow can be different images, and the lockfile below then constrains packages
+# on top of an OS layer nobody chose. Refresh with:
+#   docker buildx imagetools inspect <image>:<tag> --format '{{.Manifest.Digest}}'
+# The digest is the manifest list, so the same line builds on arm64 and x86_64.
+FROM python:3.11-slim@sha256:be1575ed968de893bd54f4c56315ff7c4736ce522c1bca08fd521731aafc0d76
 
 WORKDIR /app
 

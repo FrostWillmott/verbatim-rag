@@ -75,6 +75,25 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
+  images:
+    # The container images were never built here, so a broken Dockerfile or a
+    # constraints file pip cannot parse reached main unchallenged — which is
+    # exactly how the container lock's regeneration broke on this branch and went
+    # unnoticed for several commits.
+    #
+    # Built with plain `docker build` rather than a build action: nothing here
+    # needs a builder cache or a registry, and two fewer actions is two fewer
+    # SHAs to keep pinned.
+    #
+    # The API image carries the ML stack and is large; if a runner ever runs out
+    # of disk, free the preinstalled toolchains before this step rather than
+    # dropping the job.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: docker build -t verbatim-api:ci .
+      - run: docker build -t verbatim-frontend:ci frontend
+
   package-build:
     runs-on: ubuntu-latest
     steps:
