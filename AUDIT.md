@@ -113,7 +113,7 @@ suppression, not invention.
 | CI-1 | Checks are not required to merge into `main` | high | `rejected` | Branch protection on a fork where the same person opens and merges every pull request is ceremony, not a gate. The finding is correct for the upstream repository. |
 | CI-2 | No registered workflows or runs — Actions appear disabled on the fork | high | `n/a` | **Refuted for this repository.** The report measured `anastasiakrivova-stack/verbatim-rag`, where the platform showed zero workflows and zero runs. Checked here with `gh api`: Actions are enabled on `FrostWillmott/verbatim-rag`, three workflows are registered and five runs have completed. Nothing to enable. The finding stands for the fork it was taken against. |
 | CI-3 | Frontend build is not part of CI | medium | `done` | **How:** a `frontend` job on Node 20 — required by vite 7 — running `npm ci`, `npm run lint`, `npm run build`. Verified by reproducing exactly that sequence in a `node:20-alpine` container against read-only mounts of the manifest, lockfile, config and sources. **Why a separate job:** it needs a Node toolchain the Python matrix has no use for. |
-| CI-4 | Container images are never built in CI | medium | `done` | **How:** an `images` job builds both Dockerfiles, no push — this repository publishes no images. Plain `docker build` rather than a build action: nothing needs a builder cache or a registry, and two fewer actions is two fewer SHAs to keep pinned. **Why it matters:** without it a broken Dockerfile or a constraints file pip cannot parse reaches `main` unchallenged, which is exactly how this branch broke the container lock's regeneration and did not notice for several commits. **Not verified, and said rather than implied:** the job runs the two commands used locally, but no job on this branch has ever run on GitHub, because the branch has not been pushed. The API image also carries the ML stack and is large; a runner short of disk should free its preinstalled toolchains before the step rather than lose the job. |
+| CI-4 | Container images are never built in CI | medium | `done` | **How:** an `images` job builds both Dockerfiles, no push — this repository publishes no images. Plain `docker build` rather than a build action: nothing needs a builder cache or a registry, and two fewer actions is two fewer SHAs to keep pinned. **Why it matters:** without it a broken Dockerfile or a constraints file pip cannot parse reaches `main` unchallenged, which is exactly how this branch broke the container lock's regeneration and did not notice for several commits. **Verified on GitHub, not only locally:** the branch is pushed and the job is green on a real runner, building both images including the one carrying the ML stack. An earlier version of this row said it was unverified; that caveat is gone because the run happened, not because it was rewritten. |
 | CI-5 | Package release is fully manual | medium | `rejected` | Release automation for a fork that publishes nothing has no meaning. Belongs upstream. |
 | CI-6 | Runner image, action refs and pip installs allow version drift | low | `done` | **How:** pip installs pinned via constraints (DEP-3); `actions/checkout` and `actions/setup-python` pinned to commit SHAs with the tag kept as a trailing comment. **Why this way:** a tag is mutable and an action runs as code inside the workflow, so it belongs in the same class as a package. `ubuntu-latest` is deliberately left floating: it is GitHub-maintained, pinning it buys maintenance work rather than supply-chain safety. |
 
@@ -195,6 +195,31 @@ API test. None of these appear in any of the ten documents.
 | BEY-4 | Retrieved text enters the extraction prompt as instruction, not data | `done` | **Scope corrected while fixing it.** The first write-up here claimed injection could make the model return spans that are not in the source. It cannot: `_verify_spans` checks every span against the text of the document it was attributed to, so fabrication *and* misattribution are already dropped, and the default path additionally embeds documents as JSON. **What actually survives verification is suppression** — a document that persuades the model to return an empty array for itself is indistinguishable from a document with nothing relevant, and a provenance product that silently omits a source is failing at exactly its job. **How:** both extraction prompts now fence retrieved text in explicit markers, say it is data rather than instruction, place the authoritative rules *after* the block, and state that a document asking to be skipped must still be reported. **Why this way — no sanitisation:** neutralising injection markers would rewrite the text the model is asked to quote, and any span containing a rewritten marker would then fail verbatim verification. On a corpus of papers that includes papers about prompt injection, that trades a speculative attack for certain data loss. **Limits, stated plainly:** the delimiter is forgeable, and structural tests prove the instruction is present, not that a model obeys it. The real guarantee remains span verification; this is defence in depth on top of it. |
 | BEY-5 | `import api.app` raises whenever a `.env` holds `OPENAI_API_KEY` | `done` | Found by writing the first API test. `APIConfig` inherits pydantic-settings' default `extra="forbid"`, and `create_app()` calls `get_config()` at import time — so following the README (`cp .env.example .env`, add the key) makes `uvicorn api.app:app` fail before it serves anything. Docker hides it because `.dockerignore` drops `.env` and the values arrive as environment variables instead. **How:** `extra="ignore"`. **Why this way:** `.env` is shared with the rest of the stack by the README's own instructions, so unknown keys are expected input, not a configuration error. |
 | BEY-6 | Every documented `API_*` environment variable was inert | `done` | `Field(..., env="API_HOST")` is a Pydantic v1 idiom; v2 keeps it as schema metadata only. Measured before the fix: `API_HOST=1.2.3.4` left `host=0.0.0.0`, while the undocumented `HOST=5.6.7.8` worked. **How:** `validation_alias`, which is v2's equivalent. **Why this way:** the alternative was to rename the fields to match the accidental names, which would have made the code true by changing the documented contract instead of honouring it. This deepens CFG-1: the settings were not merely disconnected from the run path, their names did nothing. |
+
+## Continuous integration
+
+The branch is pushed and open as a draft pull request against `main`, which is
+the only way anything here reaches CI: both workflows filter on
+`branches: [main]`. All three workflows are green — `CI` across nine jobs, `Docs`,
+and `rights-check`.
+
+The first run was not. It found two things no local reproduction could have:
+
+- `rights-check` failed because the pull request body was missing the
+  contribution-rights checkbox this repository requires. That check reads the
+  pull request, so there is nothing to imitate offline.
+- The `test` matrix failed to collect `tests/test_ragbench_preprocess.py`,
+  because it imports `datasets` — a dependency of the root package, not of
+  `verbatim-core`. Invisible locally for the obvious reason: a developer machine
+  has the root package installed.
+
+The second was a repeat of a mistake already made and recorded on this branch,
+and the fix was to the design rather than to the care taken — `conftest.py` now
+derives which modules need the full stack from the modules themselves instead of
+a hand-kept list that rotted within one commit.
+
+The docs *deploy* job still cannot be exercised: it runs only on push to `main`.
+That remains reviewed rather than run, and is said so in SEC-1.
 
 ## Review gate — API group
 

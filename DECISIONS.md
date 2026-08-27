@@ -451,7 +451,8 @@ finding is reproducible from the branch point. `main` stays byte-identical to
 `upstream/main` so that future contributions to `KRLabsOrg/verbatim-rag` can
 still branch cleanly from it. A draft pull request into `main` is planned for CI
 only — both workflows filter on `branches: [main]`, so without an open PR against
-`main` nothing on this branch is ever checked. **It is not open yet: the branch
-has not been pushed, so no job in this change has run on GitHub.** Every claim
-about CI here rests on rebuilding its environment locally, which is weaker and is
-said so rather than implied.
+`main` nothing on this branch is ever checked. The branch is pushed and the pull
+request is open; all three workflows are green, across nine jobs. Claims about CI
+here rested on rebuilding its environment locally until that happened, and the
+first real run repaid the difference by failing on two things no local
+reproduction could have caught.
