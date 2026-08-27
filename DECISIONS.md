@@ -298,7 +298,7 @@ platform counters — rather than to argument. As repository context it lets a
 reader reach the conclusion themselves; written as a defence it would invite
 scepticism about the rest of the register.
 
-This closes CD-3, which asks for a repository-side note naming the authoritative
+This closes CD-003, which asks for a repository-side note naming the authoritative
 source and where local divergence is recorded.
 
 ## 2026-08-27 — Dependency pinning follows the repository's existing lock idiom

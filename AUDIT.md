@@ -49,6 +49,11 @@ upstream.
 Severity is the audit's own rating, kept verbatim so the register can be read
 against the reports.
 
+Identifiers are this file's, not the reports': only the cognitive-debt report
+numbers its own findings, and those keep its `CD-001` form so a reader can match
+them line for line. The rest are `PREFIX-N` by report, numbered in the order that
+report lists them.
+
 ## Scoreboard
 
 | Audit | Score | Findings | done | todo | rejected / deferred | n/a |
@@ -146,11 +151,11 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| CD-1 | No local entry point carrying product intent and safe-change boundaries | medium | `done` | **How:** the *Boundaries* section of `AGENTS.md` names what looks like cleanup and is not — weakening span verification, changing published constructor signatures, removing compatibility modules, repointing project identity, adding a parallel config mechanism. Each with its reason. **Why this way:** a list of prohibitions without reasons gets argued with; the reason is what makes it hold. |
-| CD-2 | Executable specs strong for core, weak for full RAG / API / frontend | medium | `todo` | Same work as TST-1 and TST-2. |
-| CD-3 | Fork decisions not reconstructable without upstream history | medium | `done` | **How:** the Premise section above names the authoritative source, this fork's role, and where divergence is recorded — rows in this file and entries in `DECISIONS.md`. **Why this way:** a note inside the repository rather than a link out, because the finding is precisely that a reader holding only the fork cannot tell inherited code from ours. Kept to verifiable facts — the audited commit, the fork chain, the platform counters — so it reads as context rather than as a defence of the work. |
-| CD-4 | Repository identity points at upstream more strongly than at the fork | medium | `rejected` | `mkdocs.yml` and `CONTRIBUTING.md` correctly identify `KRLabsOrg/verbatim-rag`: that *is* the project. Rewriting them to point at the fork would misrepresent authorship. The honest fix is CD-3 — say plainly that this is a fork and what diverges. |
-| CD-5 | Historical design context (`docs/verbatim_blog.md`) outside the docs nav | low | `todo` | |
+| CD-001 | No local entry point carrying product intent and safe-change boundaries | medium | `done` | **How:** the *Boundaries* section of `AGENTS.md` names what looks like cleanup and is not — weakening span verification, changing published constructor signatures, removing compatibility modules, repointing project identity, adding a parallel config mechanism. Each with its reason. **Why this way:** a list of prohibitions without reasons gets argued with; the reason is what makes it hold. |
+| CD-002 | Executable specs strong for core, weak for full RAG / API / frontend | medium | `todo` | Same work as TST-1 and TST-2. |
+| CD-003 | Fork decisions not reconstructable without upstream history | medium | `done` | **How:** the Premise section above names the authoritative source, this fork's role, and where divergence is recorded — rows in this file and entries in `DECISIONS.md`. **Why this way:** a note inside the repository rather than a link out, because the finding is precisely that a reader holding only the fork cannot tell inherited code from ours. Kept to verifiable facts — the audited commit, the fork chain, the platform counters — so it reads as context rather than as a defence of the work. |
+| CD-004 | Repository identity points at upstream more strongly than at the fork | medium | `rejected` | `mkdocs.yml` and `CONTRIBUTING.md` correctly identify `KRLabsOrg/verbatim-rag`: that *is* the project. Rewriting them to point at the fork would misrepresent authorship. The honest fix is CD-003 — say plainly that this is a fork and what diverges. |
+| CD-005 | Historical design context (`docs/verbatim_blog.md`) outside the docs nav | low | `todo` | |
 
 ## AI readiness — 60/100
 
