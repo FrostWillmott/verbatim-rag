@@ -3,14 +3,9 @@
   "name": "KR Labs - Verbatim RAG",
   "icons": [
     {
-      "src": "favicon-16x16.png",
-      "sizes": "16x16",
-      "type": "image/png"
-    },
-    {
-      "src": "favicon-32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
+      "src": "kr.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
     },
     {
       "src": "chiliground-transparent.png",
@@ -22,4 +17,4 @@
   "display": "standalone",
   "theme_color": "#ff5757",
   "background_color": "#ffffff"
-} 
+}

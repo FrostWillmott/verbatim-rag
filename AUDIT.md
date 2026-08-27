@@ -58,10 +58,10 @@ against the reports.
 | CI/CD | 32/100 | 6 | 1 | 3 | 2 | 0 |
 | Configuration hygiene | 40/100 | 4 | 3 | 1 | 0 | 0 |
 | Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
-| Dead code | 57/100 | 7 | 3 | 3 | 1 | 0 |
+| Dead code | 57/100 | 7 | 4 | 2 | 1 | 0 |
 | Cognitive debt | 59/100 | 5 | 2 | 2 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 3 | 1 | 1 | 0 |
-| Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
+| Codebase hygiene | 71/100 | 5 | 1 | 1 | 3 | 0 |
 | Open-source readiness | 100/100 | 0 | — | — | — | — |
 
 The 100/100 on open-source readiness is not a result. The report applies a
@@ -139,7 +139,7 @@ suppression, not invention.
 | DEAD-3 | Direct frontend dependencies with no live imports | MEDIUM | `done` | **How:** seven removed — `cmdk`, `react-icons`, and five Radix packages (`dialog`, `dropdown-menu`, `label`, `popover`, `separator`). **Not** the other three Radix packages: `scroll-area`, `slot` and `tooltip` are imported by the live `ui/*.jsx`, and the audit's "several @radix-ui packages" would have taken them too. Four more moved from `dependencies` to `devDependencies` — `autoprefixer`, `postcss`, `tailwindcss`, `tailwindcss-animate` — which are build-time only but load-bearing, so they move rather than go. **Evidence:** lockfile regenerated inside `node:20-alpine`, 408 packages to 380; image rebuilt from `frontend/Dockerfile` and the JS bundle is byte-identical to the pre-prune build at 563 814 — correct, since unused dependencies were never bundled. **What it did not do:** `npm audit` still reports 13 findings and 10 high. None of the removed packages were the vulnerable ones; `axios`, `postcss` and `vite` are, and they are DEP-1 and DEP-8. The win here is install size and review surface, not security. |
 | DEAD-4 | API service layer partly bypassed; async signature out of sync | MEDIUM | `todo` | Understated in the report — this is a live defect, not untidiness. See BEY-1. |
 | DEAD-5 | Legacy template helpers in core no longer called | LOW | `todo` | `_generate_template`, `_fill_template_enhanced`, `MARKING_SYSTEM_PROMPT`. |
-| DEAD-6 | Zero-byte and copy-like public assets | LOW | `todo` | Four 0-byte PNGs plus ` copy` duplicates; overlaps HYG-3. |
+| DEAD-6 | Zero-byte and copy-like public assets | LOW | `done` | **How:** seven files removed — `favicon.ico`, `logo192.png`, `logo512.png`, their two ` copy` duplicates, and the two 32-byte `favicon-16x16.png` / `favicon-32x32.png`. **The last two were not what the report thought.** They were referenced from `index.html` and `manifest.json`, so they looked live, but they are not PNGs at all: each contains the text `<!-- Use favicon.svg instead -->`. Someone started moving to an SVG favicon and stopped. Meanwhile `kr.svg`, a real 375×375 logo, sat in `public/` referenced by nothing. **So the fix finishes the job the placeholder describes:** `index.html` and the manifest now point at `kr.svg`, and no new binary content was invented. **Evidence:** image rebuilt and served — `/kr.svg` returns `image/svg+xml` at 14 286 bytes, while the deleted paths return the SPA fallback, which is nginx's `try_files` behaviour and not something the deletion introduced. |
 | DEAD-7 | Deprecation policy for `chunking` and the reserved `answer` parameter | INFO | `rejected` | Setting a removal version for a public compatibility layer is the upstream maintainer's call, not a fork's. |
 
 ## Cognitive debt — 59/100
@@ -166,9 +166,9 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| HYG-1 | Frontend has no lint, format or test commands | medium | `todo` | |
+| HYG-1 | Frontend has no lint, format or test commands | medium | `deferred` | Half of it landed: `.editorconfig` fixes the shared style, which is the alternative the report itself offers, and it was checked against the actual indentation rather than assumed. The linter did not, and the reason is measured rather than assumed. **ESLint** cannot be installed here without `--force`: `eslint-plugin-react@7.37.5` accepts eslint up to `^9.7` while `@eslint/js@10` pulls eslint 10, and npm calls the forced resolution potentially broken. The React plugin ecosystem is mid-transition. **Biome** installs cleanly as a single dependency and finds real problems — `parseInt` without a radix, unused imports, `forEach` returning a value, array-index keys. But its formatter rewrote **12 of 12 files, 577 insertions and 558 deletions**, and 11 lint errors survived the safe autofixes, including three false positives on Tailwind's `@tailwind` at-rules. Adopting it means either mass-reformatting inherited code — refused for ruff on the same grounds, with the same reasoning — or shipping a gate configured down to what already passes. Neither is a ten-minute change, and both need someone who can exercise the UI. Left open with the measurement attached. |
 | HYG-2 | Public constructors overloaded with positional parameters (18 functions over 7) | medium | `rejected` | Converting `VerbatimRAG`, `VerbatimTransform` and the Milvus stores to keyword-only or config objects is a breaking change to the public API of an upstream library. Only meaningful as an upstream proposal. |
-| HYG-3 | Empty and duplicated assets | low | `todo` | Overlaps DEAD-6. |
+| HYG-3 | Empty and duplicated assets | low | `done` | Same work as DEAD-6. |
 | HYG-4 | Notebook outputs carry the original author's home path | low | `todo` | `/Users/adamkovacs/...` in two notebooks under `docs/`. |
 | HYG-5 | Deprecated `verbatim_rag/chunking.py` retained as compatibility debt | low | `rejected` | Same reason as DEAD-7. |
 

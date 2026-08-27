@@ -1,0 +1,20 @@
+# Shared whitespace conventions. Deliberately minimal: it settles the things
+# every editor gets to guess, and nothing that ruff or a formatter already owns.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{js,jsx,css,html,json,yml,yaml}]
+indent_style = space
+indent_size = 2
+
+[Makefile]
+indent_style = tab
