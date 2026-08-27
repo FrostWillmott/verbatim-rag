@@ -10,6 +10,26 @@ that supersedes it.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — `.aiignore` replaced by a mechanism that actually runs
+
+The harness shipped a `.aiignore` listing `.env` among the files an AI assistant
+must not read. Nothing in this repository consumes it, and the proof was already
+in the session that questioned it: `.env` had been read twice, through Bash,
+while the file sat in the tree claiming otherwise. An artifact that looks like a
+guarantee and enforces nothing is worse than no artifact — this is the repo's own
+`inherited-codebases.md` rule turned on the harness that carries it.
+
+Replaced with `.claude/settings.json` `permissions.deny`, and verified rather
+than assumed: after the change, reading `.env` is refused both through the file
+tool and through Bash, which were the two routes actually used earlier.
+`.env.example` stays readable, because it is a tracked template the README points
+at and holds no secret.
+
+`.aiignore` was deleted rather than kept with a corrected header. Keeping both
+would leave two mechanisms for one job, which is the failure the same module
+forbids. If a tool that does read it is ever added here, it comes back with its
+consumer named.
+
 ## 2026-08-27 — The first API test was written before the fix it proves
 
 `/api/query_async` answered 500 to every request: the route passed `filter` and

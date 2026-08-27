@@ -106,6 +106,10 @@ include = [
 verbatim-core = { path = "packages/core", editable = true }
 
 [tool.ruff]
+# Do not add a standalone ruff.toml alongside this block. Ruff discovers
+# ruff.toml first and then ignores [tool.ruff] entirely rather than merging, so
+# this configuration would go silent while still looking authoritative.
+#
 # target-version stays at py310: both manifests declare requires-python >=3.10
 # and CI runs a 3.10/3.11/3.12 matrix, so a newer target would let pyupgrade
 # emit syntax that breaks the oldest leg.
