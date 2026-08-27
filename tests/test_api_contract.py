@@ -168,6 +168,48 @@ class TestLlmKeyIsReportedNotGuessed:
         assert body["llm_configured"] is False
 
 
+class TestStatusDistinguishesAnEmptyIndex:
+    """A green "Ready" over an empty index is the one lie the badge must not tell.
+
+    Found by a manual pass over the running stack, not by any of the reports: the
+    UI showed "✓ Ready" while every question answered "No relevant information
+    found in the provided documents."
+    """
+
+    def test_a_populated_index_reports_its_document_count(self, api_client):
+        body = api_client.get("/api/status").json()
+
+        assert body["document_count"] == 2
+
+    def test_a_populated_index_is_reported_ready(self, api_client):
+        body = api_client.get("/api/status").json()
+
+        assert body["message"] == "RAG system ready"
+
+    def test_an_empty_index_reports_zero_documents(self, api_client, fake_rag):
+        fake_rag.index.vector_store.get_all_documents.return_value = []
+
+        body = api_client.get("/api/status").json()
+
+        assert body["document_count"] == 0
+
+    def test_an_empty_index_says_so_in_the_message(self, api_client, fake_rag):
+        fake_rag.index.vector_store.get_all_documents.return_value = []
+
+        body = api_client.get("/api/status").json()
+
+        assert body["message"] == "RAG system ready, but no documents are indexed"
+
+    def test_a_store_that_cannot_count_reports_none_not_zero(self, api_client, fake_rag):
+        # "Unknown" and "empty" are different answers, and only one of them means
+        # the operator forgot to ingest anything.
+        del fake_rag.index.vector_store.get_all_documents
+
+        body = api_client.get("/api/status").json()
+
+        assert body["document_count"] is None
+
+
 class TestExpensiveRequestsAreBounded:
     """A single caller should not be able to ask for unbounded retrieval."""
 

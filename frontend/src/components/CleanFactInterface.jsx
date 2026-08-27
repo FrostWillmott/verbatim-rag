@@ -49,7 +49,7 @@ const MarkdownComponents = {
 };
 
 const CleanFactInterface = () => {
-  const { isLoading, isResourcesLoaded, currentQuery, submitQuery, resetQuery } = useApi();
+  const { isLoading, isResourcesLoaded, documentCount, currentQuery, submitQuery, resetQuery } = useApi();
   const [question, setQuestion] = useState('');
   const [selectedDocument, setSelectedDocument] = useState(0);
   const [highlightedFactId, setHighlightedFactId] = useState(null);
@@ -423,8 +423,15 @@ const CleanFactInterface = () => {
             <h1 className="text-xl lg:text-2xl font-bold text-foreground">KR Labs <span className="text-muted-foreground">•</span> Verbatim RAG</h1>
           </button>
 
-          <Badge variant={isResourcesLoaded ? "default" : "secondary"}>
-            {isResourcesLoaded ? '✓ Ready' : '⏳ Loading...'}
+          {/* An empty index is its own state. It used to render as a green
+              "Ready" while every question answered "no relevant information
+              found", which is the one case the badge most needs to separate. */}
+          <Badge variant={isResourcesLoaded && documentCount !== 0 ? "default" : "secondary"}>
+            {!isResourcesLoaded
+              ? '⏳ Loading...'
+              : documentCount === 0
+                ? '⚠ No documents indexed'
+                : '✓ Ready'}
           </Badge>
         </div>
       </header>
@@ -438,11 +445,15 @@ const CleanFactInterface = () => {
             {/* Query input */}
             <div className="mb-8">
               <form onSubmit={handleSubmit} className="space-y-4 lg:space-y-5">
-                <label className="block text-xl lg:text-2xl font-medium text-foreground mb-4">
+                <label
+                  htmlFor="question-input"
+                  className="block text-xl lg:text-2xl font-medium text-foreground mb-4"
+                >
                   Ask a question about your documents
                 </label>
                 <div className="flex gap-3 lg:gap-4">
                   <Input
+                    id="question-input"
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder="What would you like to know?"

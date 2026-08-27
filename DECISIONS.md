@@ -17,6 +17,51 @@ software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — The status endpoint reports what the index holds, not that it exists
+
+`/api/status` computed readiness as `rag.index is not None`, which is true from
+startup whether or not anything was ever indexed. The UI rendered it as a green
+"Ready" while every question answered "no relevant information found". Added
+`document_count`, counted through the same `vector_store.get_all_documents()`
+call `/api/documents` already uses rather than a second, cheaper count — a
+parallel mechanism beside a working one is the error this branch has twice
+reverted for. The cost is that the number saturates at the listing's limit,
+which is enough to separate empty from populated. `None` stays distinct from
+`0`: a store that cannot answer is not an empty one. `resources_loaded` still
+means "the stack is up", because making it false on an empty index would disable
+the question input for the operator about to fill it.
+
+## 2026-08-27 — The shipped indexer writes where the shipped API does not read
+
+`verbatim_rag/cli.py` indexes into collection `verbatim_rag` with
+`all-MiniLM-L6-v2`; `api/dependencies.py` reads collection `acl` with
+`ibm-granite/granite-embedding-small-english-r2`. So the documented way to
+populate an index cannot populate the demo's index, which is why the container
+stack has nothing to demonstrate out of the box. Both failure modes are silent:
+the name mismatch looks like an empty index, and because both models emit 384
+dimensions, fixing only the name would load vectors from the wrong model into
+the right slot and return meaningless results without raising. Milvus Lite is
+additionally single-writer, so an external ingest process cannot open the file
+while the API holds it.
+
+Not repaired here, because every repair picks one of the two hardcoded
+configurations as authoritative and both are the maintainer's to choose — the
+same values `CFG-4` already raises. Recorded as `BEY-9`.
+
+## 2026-08-27 — The UI was checked by a person, and that is where four defects came from
+
+The frontend was the one surface this branch changed without running: nine
+components deleted, a provider removed, six lint rules switched off pending a
+judgement about an interface nobody had exercised. CI proved the bundle builds.
+
+A written protocol with a fixed report form (`MANUAL-UI-CHECK.md`), run by
+someone who had not done the work, returned four defects and settled one of the
+disabled rules. Three of the four are invisible to any static check here: two are
+agreements between two halves of the system that no single file is wrong about,
+and one is an endpoint whose answer is true to its own code and false to its
+reader. The filled report is kept unedited as `MANUAL-UI-CHECK-RESULT.md`,
+including the five steps that could not run.
+
 ## 2026-08-27 — The first real CI run found the same mistake a second time
 
 Pushing the branch and opening the pull request was the point at which anything

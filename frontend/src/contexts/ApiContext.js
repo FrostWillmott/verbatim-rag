@@ -14,6 +14,8 @@ export const ApiProvider = ({ children }) => {
   const [isResourcesLoaded, setIsResourcesLoaded] = useState(false);
   const [currentQuery, setCurrentQuery] = useState(null);
   const [numDocs, setNumDocs] = useState(5); // Default to 5 documents
+  // null = the backend could not say, which is not the same as an empty index.
+  const [documentCount, setDocumentCount] = useState(null);
 
   // Add a ref to track document updates
   const documentUpdateTimeoutRef = useRef(null);
@@ -26,6 +28,7 @@ export const ApiProvider = ({ children }) => {
     try {
       const response = await axios.get('/api/status');
       setIsResourcesLoaded(response.data.resources_loaded);
+      setDocumentCount(response.data.document_count ?? null);
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message;
       setError(errorMessage);
@@ -161,6 +164,15 @@ export const ApiProvider = ({ children }) => {
                 }
                 break;
 
+              case 'progress':
+                // A timing signal from the extraction stage. There is no
+                // progress indicator to render it into, so it is acknowledged
+                // rather than displayed — the point is that a stage the backend
+                // already sends stops being reported as unknown on every query.
+                // The backend's other unhandled type, `error`, never reaches
+                // this switch: the `data.error` guard above catches it first.
+                break;
+
               default:
                 console.warn('Unknown response type:', data.type);
             }
@@ -191,6 +203,11 @@ export const ApiProvider = ({ children }) => {
           // Process final data if needed
           if (data.type === 'answer' && data.done) {
             setIsLoading(false);
+          }
+
+          // An error frame can also arrive as the last unterminated chunk.
+          if (data.type === 'error') {
+            setError(data.error);
           }
         } catch (parseError) {
           console.error('Error parsing final buffer:', parseError);
@@ -246,6 +263,7 @@ export const ApiProvider = ({ children }) => {
     isLoading,
     error,
     isResourcesLoaded,
+    documentCount,
     currentQuery,
     numDocs,
     submitQuery,

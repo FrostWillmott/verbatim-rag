@@ -99,6 +99,13 @@ def fake_rag(make_query_response):
     """
     rag = MagicMock()
     rag.index = MagicMock()
+    # The status endpoint counts documents through this call, and a bare MagicMock
+    # would return something len() cannot measure. Two documents is the ordinary
+    # case: a populated index. Tests that care about an empty one set it to [].
+    rag.index.vector_store.get_all_documents.return_value = [
+        {"id": "doc-1"},
+        {"id": "doc-2"},
+    ]
     rag.k = 5
     rag.query.return_value = make_query_response()
     rag.query_async = AsyncMock(return_value=make_query_response())

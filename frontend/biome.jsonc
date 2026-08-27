@@ -34,10 +34,11 @@
         // redesigning the inline citation element, which is the product's
         // signature interaction.
         "useSemanticElements": "off",
-        "noNoninteractiveElementToInteractiveRole": "off",
-        // A label with no associated control; which control it belongs to is
-        // not derivable from the markup alone.
-        "noLabelWithoutControl": "off"
+        "noNoninteractiveElementToInteractiveRole": "off"
+        // noLabelWithoutControl is back on. It was off because the intended
+        // control was not derivable from the markup; a manual pass confirmed
+        // there is exactly one input and that clicking the label left focus on
+        // <body>, which made the fix unambiguous.
       },
       "correctness": {
         // Changing a hook's dependency array changes when effects re-run. Not a

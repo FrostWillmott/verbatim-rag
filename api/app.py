@@ -48,6 +48,25 @@ def llm_key_is_configured() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY", "").strip())
 
 
+def count_indexed_documents(rag: VerbatimRAG) -> int | None:
+    """How many documents the index holds, or None if the store cannot say.
+
+    Deliberately the same call `/api/documents` already serves its listing from,
+    rather than a second counting mechanism. That inherits the listing's limit,
+    so the number saturates instead of growing without bound — enough to tell an
+    empty index from a populated one, which is what the status is asked for.
+
+    It also inherits the listing's blind spot: the Milvus store catches its own
+    failures and returns an empty list, so a store that is broken reports the
+    same zero as a store that is empty. None is returned only for the case this
+    function can see — a store with no such method at all.
+    """
+    store = getattr(getattr(rag, "index", None), "vector_store", None)
+    if not hasattr(store, "get_all_documents"):
+        return None
+    return len(store.get_all_documents() or [])
+
+
 # Bounds on what a single request may cost. Without them one caller could ask for
 # unbounded retrieval or hand over an arbitrarily large context: before these
 # caps, 10 000 context items kept the transform endpoint busy for 41 seconds.
@@ -120,6 +139,8 @@ class StatusResponse(BaseModel):
     resources_loaded: bool
     message: str
     llm_configured: bool = True
+    # None means the store could not be asked, which is not the same as zero.
+    document_count: int | None = None
 
 
 class TemplateListResponse(BaseModel):
@@ -247,13 +268,25 @@ async def get_status(
 ):
     """Get system status"""
     try:
-        # Check if system is ready
+        # `ready` has only ever meant "an index object exists". It cannot tell a
+        # working system from an empty one, and the UI renders it as a green
+        # "Ready" while every question answers "no relevant information found".
+        # The count is what separates the two cases.
         ready = hasattr(rag, "index") and rag.index is not None
+        document_count = count_indexed_documents(rag) if ready else None
+
+        if not ready:
+            message = "RAG system initializing"
+        elif document_count == 0:
+            message = "RAG system ready, but no documents are indexed"
+        else:
+            message = "RAG system ready"
 
         return StatusResponse(
             resources_loaded=ready,
-            message=f"RAG system {'ready' if ready else 'initializing'}",
+            message=message,
             llm_configured=llm_key_is_configured(),
+            document_count=document_count,
         )
     except Exception as e:
         logger.error(f"Status check failed: {e}")

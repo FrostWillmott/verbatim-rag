@@ -6,11 +6,6 @@
       "src": "kr.svg",
       "type": "image/svg+xml",
       "sizes": "any"
-    },
-    {
-      "src": "chiliground-transparent.png",
-      "type": "image/png",
-      "sizes": "512x512"
     }
   ],
   "start_url": ".",
