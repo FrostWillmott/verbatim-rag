@@ -251,6 +251,63 @@ class TestStreamingLeavesSharedStateAlone:
         assert fake_rag.index.query.call_args.kwargs["k"] == 5
 
 
+class TestFilterIsBounded:
+    """`filter` reaches a Milvus expression parser, so the API narrows it.
+
+    Not a redesign of the library's query API, which stays as it is — this is a
+    guard at the HTTP boundary, which the README calls a prototype surface.
+    """
+
+    def test_a_simple_equality_is_accepted(self, api_client, fake_rag):
+        response = api_client.post(
+            "/api/query", json={"question": "What is X?", "filter": "user_id == 'alice'"}
+        )
+
+        assert response.status_code == 200
+        assert fake_rag.query.call_args.kwargs["filter"] == "user_id == 'alice'"
+
+    def test_two_terms_joined_by_and_are_accepted(self, api_client):
+        response = api_client.post(
+            "/api/query",
+            json={
+                "question": "What is X?",
+                "filter": "user_id == 'alice' and dataset_id == 'papers'",
+            },
+        )
+
+        assert response.status_code == 200
+
+    def test_a_disjunction_that_widens_the_scope_is_refused(self, api_client):
+        response = api_client.post(
+            "/api/query",
+            json={"question": "What is X?", "filter": "user_id == 'alice' or 1 == 1"},
+        )
+
+        assert response.status_code == 422
+
+    def test_a_field_outside_the_allowlist_is_refused(self, api_client):
+        response = api_client.post(
+            "/api/query", json={"question": "What is X?", "filter": "secret == 'x'"}
+        )
+
+        assert response.status_code == 422
+
+    def test_a_quote_inside_the_value_is_refused(self, api_client):
+        response = api_client.post(
+            "/api/query", json={"question": "What is X?", "filter": "user_id == 'a' == 'b'"}
+        )
+
+        assert response.status_code == 422
+
+    def test_the_streaming_route_is_guarded_too(self, api_client):
+        response = api_client.post(
+            "/api/query/stream",
+            json={"question": "What is X?", "filter": "user_id == 'a' or 1 == 1"},
+        )
+
+        assert response.status_code == 422
+
+
 class TestQueryEndpoint:
     """POST /api/query — synchronous route, bypasses APIService."""
 

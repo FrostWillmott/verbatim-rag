@@ -16,7 +16,42 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
-## 2026-08-28 — The audit's own scoring model, transcribed and calibrated
+## 2026-08-27 — An outside review found the showcase section destroyed, and a refusal that contradicted itself
+
+An independent evaluation of this branch, run with a different model and without
+access to the working transcript, returned findings worth acting on. Four
+mattered.
+
+The worst was self-inflicted and one commit old. The script that refreshed the
+scoreboard substituted by report name across the whole file, and the calibration
+table's rows begin with the same names — so it overwrote the section that
+demonstrates the arithmetic, leaving prose that referenced numbers no longer
+present. In a commit about tidying, breaking the most-read section, against a
+standing rule to read the final diff before committing. Restored and corrected.
+
+The calibration claim itself was overstated. It said ten formulas of ten
+reproduce exactly; nine do. Cognitive debt sums to 5.85 and ×10 lands on 58.5
+against a published 59, so it needs half-up rounding the report never states.
+The first pass reported 59 only because Python's binary float makes the sum
+5.8500000000000005 — the right answer for the wrong reason, which is the kind of
+agreement that hides a mistake instead of catching it.
+
+SEC-3 was refused as "a redesign of the library's public query API". It is not:
+`filter` is accepted by the HTTP models, the surface the README calls a
+prototype, and it can be narrowed there without touching the library at all. The
+same reasoning had already closed DEAD-2 by removing `template_id` from the
+schema. Applying a principle to one finding and its opposite to another is worse
+than either answer alone. Now closed with a boundary validator.
+
+And PR #46 was cited as evidence that "upstream chose 8080". It is my own pull
+request and it is still open. That dressed a personal choice as external
+validation — the least defensible sentence in the register, and the easiest for a
+reader to check.
+
+The pattern across all four: prose drifting away from what the tree and the
+platform actually say, in a document whose whole value is that it does not.
+
+## 2026-08-27 — The audit's own scoring model, transcribed and calibrated
 
 Each report publishes its arithmetic. Transcribing all ten and feeding them the
 reports' own inputs reproduces every published score exactly — ten of ten. That
@@ -47,7 +82,7 @@ no-op for a fork with no delta of its own. This branch is that delta, so the
 report would now score its fourteen criteria for real and land lower. Better said
 plainly than left for a reader to mistake the old 100 for an achievement.
 
-## 2026-08-28 — transformers moved to 5.16.1, and predicting a side effect is not checking it
+## 2026-08-27 — transformers moved to 5.16.1, and predicting a side effect is not checking it
 
 The upgrade itself was undramatic. Three packages move on Linux — transformers,
 tokenizers, huggingface-hub — torch is untouched, and `pip-audit` stops reporting
@@ -389,6 +424,9 @@ Work on the external code audit happens on `audit-remediation`, branched from
 `main` at `88f510a` — the exact commit the audits were taken against, so every
 finding is reproducible from the branch point. `main` stays byte-identical to
 `upstream/main` so that future contributions to `KRLabsOrg/verbatim-rag` can
-still branch cleanly from it. A draft pull request into `main` is opened for CI
-only: both workflows filter on `branches: [main]`, so without an open PR against
-`main` nothing on this branch would ever be checked.
+still branch cleanly from it. A draft pull request into `main` is planned for CI
+only — both workflows filter on `branches: [main]`, so without an open PR against
+`main` nothing on this branch is ever checked. **It is not open yet: the branch
+has not been pushed, so no job in this change has run on GitHub.** Every claim
+about CI here rests on rebuilding its environment locally, which is weaker and is
+said so rather than implied.

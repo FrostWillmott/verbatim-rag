@@ -50,7 +50,7 @@ Which check a change needs:
 |---|---|---|
 | `packages/core/`, `verbatim_rag/`, `api/`, `tests/` | `make check` | Same paths CI lints |
 | `pyproject.toml` dependencies | `make lock`, then `make check` | Regenerates `dev-constraints.txt`; uv keeps existing pins and will not raise versions on its own |
-| `docker/`, `Dockerfile`, `docker-compose.yml` | `docker compose up --build`, then `curl -fsS "localhost:${FRONTEND_PORT:-80}/api/status"` | See `docker/overrides.txt` before regenerating the container lock. The published port comes from `FRONTEND_PORT`, and its default currently differs between `.env.example` and Compose — see CFG-2 in `AUDIT.md` |
+| `docker/`, `Dockerfile`, `docker-compose.yml` | `docker compose up --build`, then `curl -fsS "localhost:${FRONTEND_PORT:-8080}/api/status"` | See `docker/overrides.txt` before regenerating the container lock, and note it needs `--no-emit-package verbatim-core` |
 | `frontend/` | `npm ci && npm run build` | Needs Node ≥ 20.19; if the local Node is older, build through `frontend/Dockerfile` (`node:20-alpine`) |
 | `docs/`, `mkdocs.yml` | `mkdocs build --strict` | Not installed locally by default; CI runs it |
 | `.github/workflows/` | Opening a pull request against `main` | Both workflows filter on `branches: [main]`, so nothing on a branch is checked until a PR exists. The docs *deploy* job runs only on push to `main` and cannot be exercised from a PR — say so rather than claiming it was verified |

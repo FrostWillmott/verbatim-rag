@@ -104,10 +104,10 @@ include = [
 # The key is uv-specific and ignored by pip, so `pip install .` still resolves
 # from the registry exactly as before.
 #
-# Note for whoever regenerates docker/constraints.txt next: that file currently
-# pins verbatim-core==0.2.8 because it predates this key. Regenerating it now
-# will drop that pin, since the package resolves to a local path. Verify the
-# image still builds before accepting the change.
+# This changes what `uv pip compile` emits for the container lock: it writes
+# `-e packages/core`, which pip refuses inside a constraints file, so the
+# regeneration command in docker/overrides.txt carries --no-emit-package
+# verbatim-core. That was found the hard way, by an image that would not build.
 verbatim-core = { path = "packages/core", editable = true }
 
 [tool.ruff]

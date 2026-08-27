@@ -5,6 +5,7 @@ Decoupled from RAG logic with proper dependency injection.
 
 import logging
 import os
+import re
 import sys
 from contextlib import asynccontextmanager
 from typing import Annotated, Any, Optional
@@ -12,7 +13,7 @@ from typing import Annotated, Any, Optional
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse as FastAPIStreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 try:
     from verbatim_rag import (
@@ -55,6 +56,35 @@ MAX_CONTEXT_ITEMS = 100
 MAX_CONTEXT_ITEM_CHARS = 100_000
 
 
+# `filter` is handed to a Milvus expression parser. The library keeps taking a
+# free string — that is its public API and not this fork's to redesign — but the
+# HTTP surface, which the README calls a prototype, narrows it to the shape the
+# vector store actually promotes for filtering. Anything else is refused here
+# rather than interpreted downstream.
+FILTER_FIELDS = ("user_id", "dataset_id", "document_id")
+MAX_FILTER_TERMS = 4
+_FILTER_TERM = re.compile(
+    r"^(?:%s)\s*==\s*(?P<q>['\"])(?P<value>[^'\"\\]{1,128})(?P=q)$" % "|".join(FILTER_FIELDS)
+)
+
+
+def validate_filter_expression(expression: Optional[str]) -> Optional[str]:
+    """Accept only `field == 'value'`, optionally joined by `and`."""
+    if expression is None:
+        return None
+
+    terms = [term.strip() for term in re.split(r"\s+and\s+", expression.strip(), flags=re.I)]
+    if not 1 <= len(terms) <= MAX_FILTER_TERMS:
+        raise ValueError(f"filter accepts 1 to {MAX_FILTER_TERMS} terms joined by 'and'")
+    for term in terms:
+        if not _FILTER_TERM.match(term):
+            raise ValueError(
+                "each filter term must be <field> == '<value>' with field one of "
+                + ", ".join(FILTER_FIELDS)
+            )
+    return expression
+
+
 # Request/Response models
 class QueryRequestModel(BaseModel):
     # extra="forbid" so an unsupported parameter is refused instead of silently
@@ -70,6 +100,8 @@ class QueryRequestModel(BaseModel):
     filter: Optional[str] = None
     search_params: Optional[dict[str, Any]] = None
 
+    _check_filter = field_validator("filter")(validate_filter_expression)
+
 
 class StreamQueryRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -80,6 +112,8 @@ class StreamQueryRequestModel(BaseModel):
     rrf_k: int = 60
     filter: Optional[str] = None
     search_params: Optional[dict[str, Any]] = None
+
+    _check_filter = field_validator("filter")(validate_filter_expression)
 
 
 class StatusResponse(BaseModel):

@@ -14,7 +14,7 @@ repos:
 
   # Ruff runs from .venv rather than from a rev-pinned mirror, so the hook and
   # `make lint` are guaranteed to be the same binary. The version is declared
-  # once in pyproject.toml and resolved once in uv.lock; a `rev:` here would be
+  # once in pyproject.toml and resolved once in dev-constraints.txt; a `rev:` would be
   # a third place to keep in sync by hand.
   - repo: local
     hooks:
