@@ -16,6 +16,29 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — The agent entry point is vendor-neutral and states boundaries, not just layout
+
+`AGENTS.md`, not a directory named after one assistant. The finding was that
+there is no cross-agent entry point; answering it with a vendor-specific file
+would have been answering a different question.
+
+Most of it is navigation and a verification matrix, which is unremarkable. Two
+parts are not.
+
+The matrix carries its caveats rather than hiding them: the frontend needs
+Node >= 20.19 and will not build on an older one, mkdocs is not installed
+locally, and the docs deploy job runs only on push to `main` so it cannot be
+exercised from a pull request at all. A matrix that implies everything is
+checkable is worse than no matrix, because the first person to trust it learns
+otherwise at the wrong moment.
+
+The boundaries section lists what looks like cleanup and is not — weakening span
+verification, changing constructor signatures of published packages, deleting
+compatibility modules, repointing project identity, adding a second config or
+lock mechanism beside an existing one. Each carries its reason, because a
+prohibition without one gets argued with by the next reader, and in this
+repository several of them are the difference between a fix and a regression.
+
 ## 2026-08-27 — Retrieved text is framed as data, and deliberately not sanitised
 
 Retrieved documents are attacker-controlled in any real deployment, and they were

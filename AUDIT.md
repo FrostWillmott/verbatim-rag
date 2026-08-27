@@ -59,8 +59,8 @@ against the reports.
 | Configuration hygiene | 40/100 | 4 | 2 | 2 | 0 | 0 |
 | Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
 | Dead code | 57/100 | 7 | 1 | 5 | 1 | 0 |
-| Cognitive debt | 59/100 | 5 | 1 | 3 | 1 | 0 |
-| AI readiness | 60/100 | 5 | 0 | 4 | 1 | 0 |
+| Cognitive debt | 59/100 | 5 | 2 | 2 | 1 | 0 |
+| AI readiness | 60/100 | 5 | 3 | 1 | 1 | 0 |
 | Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
 | Open-source readiness | 100/100 | 0 | — | — | — | — |
 
@@ -146,7 +146,7 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| CD-1 | No local entry point carrying product intent and safe-change boundaries | medium | `todo` | Same item as AIR-1; one `AGENTS.md` closes both. |
+| CD-1 | No local entry point carrying product intent and safe-change boundaries | medium | `done` | **How:** the *Boundaries* section of `AGENTS.md` names what looks like cleanup and is not — weakening span verification, changing published constructor signatures, removing compatibility modules, repointing project identity, adding a parallel config mechanism. Each with its reason. **Why this way:** a list of prohibitions without reasons gets argued with; the reason is what makes it hold. |
 | CD-2 | Executable specs strong for core, weak for full RAG / API / frontend | medium | `todo` | Same work as TST-1 and TST-2. |
 | CD-3 | Fork decisions not reconstructable without upstream history | medium | `done` | **How:** the Premise section above names the authoritative source, this fork's role, and where divergence is recorded — rows in this file and entries in `DECISIONS.md`. **Why this way:** a note inside the repository rather than a link out, because the finding is precisely that a reader holding only the fork cannot tell inherited code from ours. Kept to verifiable facts — the audited commit, the fork chain, the platform counters — so it reads as context rather than as a defence of the work. |
 | CD-4 | Repository identity points at upstream more strongly than at the fork | medium | `rejected` | `mkdocs.yml` and `CONTRIBUTING.md` correctly identify `KRLabsOrg/verbatim-rag`: that *is* the project. Rewriting them to point at the fork would misrepresent authorship. The honest fix is CD-3 — say plainly that this is a fork and what diverges. |
@@ -156,10 +156,10 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| AIR-1 | No `AGENTS.md` or equivalent cross-agent entry point | high | `todo` | Vendor-neutral on purpose: answering "no cross-agent entry point" with a Claude-specific directory would miss the point of the finding. |
-| AIR-2 | No one-command verification matrix per surface | high | `todo` | Partly addressed already — `make check` now runs the CI gate locally. The per-surface matrix still needs writing. |
+| AIR-1 | No `AGENTS.md` or equivalent cross-agent entry point | high | `done` | **How:** `AGENTS.md` at the root — 99 lines covering what the repository is, a reading order, the surfaces and their stability, the verification matrix, the boundaries, and where decisions are recorded. **Why this way:** vendor-neutral, naming no assistant. Answering "there is no cross-agent entry point" with a directory named after one vendor would have missed the finding. Every link in it was checked to resolve. |
+| AIR-2 | No one-command verification matrix per surface | high | `done` | **How:** `make check` runs the CI gate locally, and `AGENTS.md` carries the per-surface table: changed path → command → caveat. **Why this way:** the caveats are the useful part, so they are in the table rather than omitted — the frontend needs Node ≥ 20.19, mkdocs is not installed locally, and the docs deploy job cannot be exercised from a pull request at all. A matrix that implies everything is checkable would be worse than none. |
 | AIR-3 | `/api/load-resources` and the env contract are out of sync | medium | `todo` | Confirmed: `frontend/src/contexts/ApiContext.js:218` posts to a route that `api/app.py` does not define. Overlaps DEAD-2. |
-| AIR-4 | No durable planning memory or handoff format | medium | `todo` | `DECISIONS.md` and this file are the start of it. |
+| AIR-4 | No durable planning memory or handoff format | medium | `done` | **How:** two files with separate jobs — this register for what happens to each finding, `DECISIONS.md` for why non-obvious choices were made — plus the rule in `AGENTS.md` that both are updated in the same commit as the change. **Why this way:** the failure mode is a register that lies after work stops halfway, so the convention is written down rather than left to habit. Not a full ADR process; that would be over-engineering for a fork. |
 | AIR-5 | No product workflow and terminology map | medium | `rejected` | Writing a product map for someone else's project would be inventing intent rather than recording it. |
 
 ## Codebase hygiene — 71/100
