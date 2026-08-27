@@ -19,32 +19,6 @@ from verbatim_rag.models import QueryResponse
 from verbatim_rag.response_builder import ResponseBuilder
 from verbatim_rag.schema import DocumentSchema
 
-MARKING_SYSTEM_PROMPT = """
-You are a Q&A text extraction system. Your task is to identify and mark EXACT verbatim text spans from the provided document that is relevant to answer the user's question.
-
-# Rules
-1. Mark **only** text that explicitly addresses the question
-2. Never paraphrase, modify, or add to the original text
-3. Preserve original wording, capitalization, and punctuation
-4. Mark all relevant segments - even if they're non-consecutive
-5. If there is no relevant information, don't add any tags.
-
-# Output Format
-Wrap each relevant text span with <relevant> tags.
-Return ONLY the marked document text - no explanations or summaries.
-
-# Example
-Question: What causes climate change?
-Document: "Scientists agree that carbon emissions (CO2) from burning fossil fuels are the primary driver of climate change. Deforestation also contributes significantly."
-Marked: "Scientists agree that <relevant>carbon emissions (CO2) from burning fossil fuels</relevant> are the primary driver of climate change. <relevant>Deforestation also contributes significantly</relevant>."
-
-# Your Task
-Question: {QUESTION}
-Document: {DOCUMENT}
-
-Mark the relevant text:
-"""
-
 
 class VerbatimRAG:
     """Retrieve documents and compose cited source excerpts.
@@ -157,19 +131,6 @@ class VerbatimRAG:
             return await asyncio.to_thread(self.intent_detector.detect, question)
         return None
 
-    def _generate_template(
-        self, question: str, display_spans: list[str] = None, citation_count: int = 0
-    ) -> str:
-        """
-        Generate or select a template for the response.
-
-        :param question: The user's question
-        :param display_spans: Spans that will be displayed (for contextual templates)
-        :param citation_count: Number of additional citations
-        :return: A template string with placeholders
-        """
-        return self.template_manager.get_template(question, display_spans or [], citation_count)
-
     def _rank_and_split_spans(
         self, relevant_spans: dict[str, list[str]]
     ) -> tuple[list[dict], list[dict]]:
@@ -190,21 +151,6 @@ class VerbatimRAG:
         citation_spans = all_spans[self.max_display_spans :]
 
         return display_spans, citation_spans
-
-    def _fill_template_enhanced(
-        self, template: str, display_spans: list[dict], citation_spans: list[dict]
-    ) -> str:
-        """
-        Fill the template with display spans and citation references.
-
-        Now delegates to the template manager's fill functionality.
-
-        :param template: The template string with placeholders
-        :param display_spans: Spans to display verbatim with metadata
-        :param citation_spans: Spans for citation reference only
-        :return: The filled template
-        """
-        return self.template_manager.fill_template(template, display_spans, citation_spans)
 
     def query(
         self,

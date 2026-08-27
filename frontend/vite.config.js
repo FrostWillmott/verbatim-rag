@@ -21,7 +21,10 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
-    sourcemap: true,
+    // Off for production: the built bundle is served publicly by nginx, and a
+    // source map hands the reader the original sources. Turn it back on locally
+    // when you need to debug a build.
+    sourcemap: false,
   },
   esbuild: {
     loader: 'jsx',

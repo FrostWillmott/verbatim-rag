@@ -49,6 +49,8 @@ nav:
   - API Reference:
     - verbatim_core: api/verbatim-core.md
     - verbatim_rag: api/verbatim-rag.md
+  - Background:
+    - "Design notes (historical)": verbatim_blog.md
 
 markdown_extensions:
   - pymdownx.highlight:

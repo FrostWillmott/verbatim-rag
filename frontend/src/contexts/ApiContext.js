@@ -208,31 +208,6 @@ export const ApiProvider = ({ children }) => {
     }
   }, [isResourcesLoaded, numDocs]);
 
-  // Load resources with optional API key
-  const loadResources = useCallback(async (apiKey = null) => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const payload = apiKey ? { api_key: apiKey } : {};
-      const response = await axios.post('/api/load-resources', payload);
-
-      setIsResourcesLoaded(response.data.success);
-
-      if (!response.data.success) {
-        setError(response.data.message);
-      }
-
-      return response.data;
-    } catch (err) {
-      const errorMessage = err.response?.data?.detail || err.message;
-      setError(errorMessage);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   // Update number of documents to retrieve - keep this for internal use
   const updateNumDocs = useCallback((num) => {
     setNumDocs(num);
@@ -274,7 +249,6 @@ export const ApiProvider = ({ children }) => {
     currentQuery,
     numDocs,
     submitQuery,
-    loadResources,
     updateNumDocs,
     resetQuery,
     refreshStatus,
