@@ -6,10 +6,11 @@ convention. Don't edit past entries; if a decision is reversed, add a new one
 that supersedes it.
 
 Scope: decisions about **this project** — its code, configuration, dependencies,
-process. Decisions about the personal harness that happens to be checked in here
-— which rule modules apply, how the linter preset was adapted, editor settings —
-belong in their commit messages, not in this file. Someone reading this
-repository wants to know why the software is the way it is.
+process. The working infrastructure this branch carries is deliberate and
+described in `AGENTS.md`, but decisions *about* it — which rule modules apply,
+how the linter preset was adapted, editor settings — belong in their commit
+messages rather than here. Someone reading this repository wants to know why the
+software is the way it is.
 
 <!--
 ## YYYY-MM-DD — <short title>

@@ -223,11 +223,11 @@ That remains reviewed rather than run, and is said so in SEC-1.
 
 ## Review gate — API group
 
-The planned gate was an independent review agent. Five attempts died with
-`Connection lost mid-response`, at different steps and under two different
-advisor models, so the review was done by hand instead. That is weaker: it is the
-author checking his own work, and it is recorded as such. The remaining
-independent gates are the evaluation run and the final multi-agent review.
+This pass over the API changes was done by the author, which is the weaker kind
+of review and is recorded as such: the same person cannot be relied on to find
+what he already failed to see. The independent check came later, from an
+evaluation run against the branch on a different model, and it found more — its
+results are in the corrections above.
 
 Two things it changed:
 
@@ -247,9 +247,9 @@ Two things it changed:
   A test pins that the two fields the live UI sends are still accepted.
 
 Worth noting how the first was found: the verification of it was itself wrong at
-first. `git stash push` on an unmodified file returns success, so the `||`
-fallback never ran and the "pre-fix" comparison was silently testing the current
-code. Same class of error as the test it was checking.
+first. `git stash push` on an unmodified file returns success, so the fallback
+never ran and the "pre-fix" comparison was silently testing the current code —
+the same class of error as the test it was checking.
 
 ## Reconstructed scoring model
 

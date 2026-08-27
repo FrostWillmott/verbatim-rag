@@ -1,7 +1,14 @@
 # AGENTS.md
 
-Entry point for an automated agent working in this repository. Tool-neutral on
-purpose: no assistant is named here, and nothing in it is specific to one vendor.
+Entry point for an automated agent working in this repository. This file is
+deliberately vendor-neutral — an agent needs one place to start regardless of who
+made it, and `AGENTS.md` is the convention several tools already read.
+
+It is honest to say where that stops. The longer rule modules live under
+`.claude/rules/`, a directory named after one vendor, because that is what loads
+them automatically for the author. Their content is not vendor-specific and any
+agent can read them; the directory name is a loading convention, not a claim
+about who the rules are for.
 
 ## What this repository is
 
@@ -84,6 +91,22 @@ maintainer:
 and holds no secret. The LLM key is deliberately not required at startup — the
 stack starts without it and reports `llm_configured: false` from `/api/status`.
 Never put a real key in a tracked file, a test, or a commit message.
+
+## What is checked in on this branch and why
+
+This branch carries working infrastructure alongside the code changes:
+`Makefile`, `dev-constraints.txt`, `.pre-commit-config.yaml`, `.editorconfig`,
+`biome.jsonc`, and the rule modules under `.claude/rules/`. That is deliberate,
+not spillage.
+
+`Makefile`, the pin set and the hooks are the verification gate this branch was
+built behind, and quoting a result without shipping the thing that produced it
+is worth less. The rule modules are the working agreement the changes were made
+under — including `inherited-codebases.md`, which exists because two changes here
+had to be reverted for the same reason and the lesson was worth writing down
+rather than remembering.
+
+None of it is proposed upstream. This branch is never merged.
 
 ## Recording work
 

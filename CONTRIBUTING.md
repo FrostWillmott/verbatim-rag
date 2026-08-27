@@ -26,17 +26,24 @@ Create a Python 3.10+ virtual environment, then install the surface you need.
 ```bash
 git clone https://github.com/KRLabsOrg/verbatim-rag.git
 cd verbatim-rag
+make install
+```
+
+`make install` creates `.venv` and installs the core package, the root package
+and the dev tooling against `dev-constraints.txt`, the generated pin set. Tool
+versions are declared once, in the `dev` extra of `pyproject.toml`; regenerate
+the pin set with `make lock` after changing a dependency.
+
+To work on the extraction core alone, without the ML and vector-store stack:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
-
-# Lightweight extraction development
-pip install -e packages/core/
-pip install pytest pytest-asyncio ruff build twine
-
-# Full RAG package development
-pip install -e packages/core/
-pip install -e ".[dev]"
+pip install -c dev-constraints.txt -e packages/core/
+pip install -c dev-constraints.txt pytest pytest-asyncio
 ```
+
+The `-c` matters: it is what keeps a local install on the same versions as CI.
 
 The core runtime depends on `openai`, `pydantic`, `rapidfuzz`, and `jinja2`.
 The optional model extra and full RAG package add substantially heavier ML,
@@ -48,10 +55,12 @@ Run the checks that match the files you changed and list the exact commands in
 your pull request.
 
 ```bash
-pytest tests/ -v
-ruff format --check packages/core/verbatim_core/ verbatim_rag/ api/ tests/
-ruff check packages/core/verbatim_core/ verbatim_rag/ api/ tests/
+make check      # lint, format and the full test suite with the coverage floor
+make test-core  # only what an environment without the root package can run
 ```
+
+`make help` lists the rest. The commands live in the `Makefile` rather than here
+so that this file and CI cannot drift apart; `make check` runs what CI runs.
 
 For packaging changes:
 
@@ -68,11 +77,14 @@ npm ci
 npm run build
 ```
 
-CI currently gates the network-free `verbatim-core` tests on Python 3.10–3.12,
-Ruff across the core, full-RAG and API Python sources, dependency auditing for
-the core package, and distribution builds. A green core test matrix does not by
-itself validate model downloads, the API, or the frontend; include focused
-tests for those surfaces in the same PR.
+CI gates the network-free `verbatim-core` tests on Python 3.10–3.12, Ruff across
+the core, full-RAG and API sources, the RAG and API test suites with a coverage
+floor, the frontend lint and build on Node 20, both container image builds,
+dependency auditing, and distribution builds.
+
+Two things it still does not cover, so include focused evidence in the pull
+request when you touch them: model downloads, which no job performs, and the
+frontend beyond a successful build — there is no UI test framework yet.
 
 ## Issues and discussions
 

@@ -231,7 +231,9 @@ health check covers that with a startup grace period (`start_period` in
 for the API to report healthy.
 
 The API key is not validated at startup: a missing or empty `OPENAI_API_KEY`
-still brings the stack up healthy and surfaces as an error on the first query.
+still brings the stack up healthy. It is reported rather than left to surprise
+you on the first query — the API logs a warning as it starts, and `/api/status`
+returns `llm_configured: false`.
 
 ### Logs and status
 
