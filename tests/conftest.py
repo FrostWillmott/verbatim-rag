@@ -2,6 +2,23 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+# Tests marked requires_full_stack import verbatim_rag and api, which only exist
+# when the root package is installed. A marker alone is not enough: `-m` filters
+# after collection, and collection is what fails. Skipping them here keeps a
+# core-only environment — the CI matrix — from erroring on files it was never
+# meant to run.
+#
+# The safeguard against these silently skipping everywhere is the coverage floor:
+# if the RAG and API tests stopped running, coverage would drop through it.
+try:
+    import verbatim_rag  # noqa: F401
+
+    _FULL_STACK = True
+except ImportError:  # pragma: no cover - depends on how the environment was built
+    _FULL_STACK = False
+
+collect_ignore_glob = [] if _FULL_STACK else ["test_rag_pipeline.py", "test_api_*.py"]
+
 
 @pytest.fixture
 def mock_openai_response():

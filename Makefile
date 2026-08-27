@@ -1,4 +1,4 @@
-.PHONY: help install install-hooks lock check fix lint format typecheck test pre-commit ci clean
+.PHONY: help install install-hooks lock check fix lint format typecheck test test-core pre-commit ci clean
 
 # The paths CI lints and formats, kept identical to .github/workflows/ci.yml on
 # purpose. `ruff check .` also walks examples/ and scripts/, which sit outside
@@ -27,7 +27,8 @@ help:
 	@echo "  make lint          - Run linter (ruff check)"
 	@echo "  make format        - Check formatting (ruff format --check)"
 	@echo "  make typecheck     - Deferred in this branch, see DECISIONS.md"
-	@echo "  make test          - Run tests"
+	@echo "  make test          - Run the full suite with the coverage floor"
+	@echo "  make test-core     - Run only what a verbatim-core-only env can run"
 	@echo "  make pre-commit    - Run hooks against staged files"
 	@echo "  make ci            - Alias for check"
 
@@ -76,8 +77,16 @@ format:
 typecheck:
 	@echo "SKIPPED: mypy is not wired in this branch. See DECISIONS.md (2026-08-27)."
 
+# Matches the CI test-full job: everything, with the coverage floor from
+# pyproject.toml applied.
 test:
-	$(BIN)/pytest tests/ -v
+	$(BIN)/pytest tests/ -v --cov --cov-report=term
+
+# Matches the CI matrix leg, which installs verbatim-core and nothing else. Tests
+# that need the root package are skipped at collection, not just deselected —
+# see tests/conftest.py.
+test-core:
+	$(BIN)/pytest tests/ -v -m "not requires_full_stack"
 
 # Deliberately not --all-files: trailing-whitespace and end-of-file-fixer would
 # rewrite 68 inherited files that are outside this branch's scope. Bare

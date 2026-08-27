@@ -138,3 +138,21 @@ known-first-party = ["verbatim_rag", "verbatim_core", "api"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    # These need the root package installed, not just verbatim-core, because they
+    # exercise verbatim_rag and api. The CI matrix installs only the core package
+    # and runs `-m "not requires_full_stack"`; a separate job installs the root
+    # and runs everything.
+    "requires_full_stack: needs the root package, not just verbatim-core",
+]
+
+[tool.coverage.run]
+source = ["packages/core/verbatim_core", "verbatim_rag", "api"]
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+# The floor is set to what the suite actually reaches, not to a round number.
+# Its job is to stop coverage sliding back, not to look respectable: a target
+# nobody can meet gets disabled, and one nobody can miss measures nothing.
+fail_under = 35

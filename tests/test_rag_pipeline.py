@@ -12,6 +12,11 @@ from tests.fakes import FakeIndex, FakeLLMClient, FakeSpanExtractor
 from verbatim_rag.core import VerbatimRAG
 from verbatim_rag.schema import DocumentSchema
 
+# Needs the root package installed, not just verbatim-core: this exercises the
+# RAG and API surfaces. CI runs these in a separate job — see requires_full_stack
+# in pyproject.toml.
+pytestmark = pytest.mark.requires_full_stack
+
 CORPUS = [
     (
         "Retrieval",

@@ -4,6 +4,13 @@ These run against doubles for the RAG and template seams, so they need neither
 Milvus nor an LLM key. See the api_client fixture in conftest.py.
 """
 
+import pytest
+
+# Needs the root package installed, not just verbatim-core: this exercises the
+# RAG and API surfaces. CI runs these in a separate job — see requires_full_stack
+# in pyproject.toml.
+pytestmark = pytest.mark.requires_full_stack
+
 
 class TestQueryAsyncEndpoint:
     """POST /api/query_async — the one route that goes through APIService."""

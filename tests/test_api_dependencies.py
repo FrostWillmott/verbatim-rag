@@ -7,8 +7,15 @@ rather than through them.
 
 import json
 
+import pytest
+
 from api.dependencies import apply_template_config
 from verbatim_core.templates import TemplateManager
+
+# Needs the root package installed, not just verbatim-core: this exercises the
+# RAG and API surfaces. CI runs these in a separate job — see requires_full_stack
+# in pyproject.toml.
+pytestmark = pytest.mark.requires_full_stack
 
 
 class TestApplyTemplateConfig:

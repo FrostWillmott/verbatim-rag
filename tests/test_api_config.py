@@ -5,7 +5,14 @@ with the env file pointed at a temporary path so the developer's own .env cannot
 change the result.
 """
 
+import pytest
+
 from api.config import APIConfig
+
+# Needs the root package installed, not just verbatim-core: this exercises the
+# RAG and API surfaces. CI runs these in a separate job — see requires_full_stack
+# in pyproject.toml.
+pytestmark = pytest.mark.requires_full_stack
 
 
 class TestEnvFile:
