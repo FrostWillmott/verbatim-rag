@@ -27,7 +27,7 @@ dependencies = [
 [project.optional-dependencies]
 model = [
     "torch>=2.6.0",
-    "transformers==4.53.3",
+    "transformers==5.16.1",
     "scikit-learn==1.6.1",
 ]
 

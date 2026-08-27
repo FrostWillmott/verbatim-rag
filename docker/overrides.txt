@@ -11,13 +11,21 @@
 # the pinned set:
 #
 #   uv pip compile pyproject.toml --universal --python-version 3.11 \
-#       --override docker/overrides.txt -o docker/constraints.txt
+#       --override docker/overrides.txt --no-emit-package verbatim-core \
+#       -o docker/constraints.txt
 #
 # python-version must match the base image in Dockerfile (python:3.11-slim).
 # --universal resolves with environment markers instead of for the host, so the
 # same lock builds on both arm64 and x86_64 machines; without it the image only
-# builds on the architecture it was generated on. constraints.txt also pins
-# verbatim-core, so bumping packages/core requires regenerating it.
+# builds on the architecture it was generated on.
+#
+# --no-emit-package verbatim-core is required. [tool.uv.sources] in pyproject.toml
+# points that name at the local packages/core so development uses the code being
+# edited rather than the published release; without this flag the compile writes
+# `-e packages/core` into constraints.txt, and pip rejects editable entries inside
+# a constraints file — the image then fails to build. constraints.txt therefore no
+# longer pins verbatim-core; the Dockerfile installs ./packages/core directly, so
+# the pin was informational.
 #
 # After regenerating, verify rather than trust the resolution:
 #

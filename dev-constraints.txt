@@ -64,8 +64,10 @@ chonkie-core==0.10.2
     # via chonkie
 click==8.5.0
     # via
+    #   huggingface-hub
     #   mkdocs
     #   python-oxmsg
+    #   typer
     #   uvicorn
 colorama==0.4.6
     # via
@@ -103,20 +105,33 @@ dill==0.3.8
     #   multiprocess
 distlib==0.4.3
     # via virtualenv
-doclang==0.7.3
+doclang==0.7.3 ; sys_platform != 'darwin'
     # via docling-core
-docling==2.123.0
+docling==2.99.0 ; sys_platform == 'darwin'
     # via verbatim-rag (pyproject.toml)
-docling-core==2.92.0
+docling==2.123.0 ; sys_platform != 'darwin'
+    # via verbatim-rag (pyproject.toml)
+docling-core==2.78.0 ; sys_platform == 'darwin'
     # via
     #   docling-ibm-models
     #   docling-parse
     #   docling-slim
-docling-ibm-models==3.14.0
+docling-core==2.92.0 ; sys_platform != 'darwin'
+    # via
+    #   docling-ibm-models
+    #   docling-parse
+    #   docling-slim
+docling-ibm-models==3.13.2 ; sys_platform == 'darwin'
     # via docling-slim
-docling-parse==7.16.0
+docling-ibm-models==3.14.0 ; sys_platform != 'darwin'
     # via docling-slim
-docling-slim==2.123.0
+docling-parse==6.2.0 ; sys_platform == 'darwin'
+    # via docling-slim
+docling-parse==7.16.0 ; sys_platform != 'darwin'
+    # via docling-slim
+docling-slim==2.99.0 ; sys_platform == 'darwin'
+    # via docling
+docling-slim==2.123.0 ; sys_platform != 'darwin'
     # via docling
 docutils==0.23
     # via readme-renderer
@@ -135,7 +150,6 @@ filelock==3.32.4
     #   huggingface-hub
     #   python-discovery
     #   torch
-    #   transformers
     #   virtualenv
 filetype==1.2.0
     # via docling-slim
@@ -161,7 +175,7 @@ h11==0.16.0
     #   httpcore
     #   httpcore2
     #   uvicorn
-hf-xet==1.6.0 ; platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
+hf-xet==1.6.0 ; platform_machine == 'AMD64' or platform_machine == 'aarch64' or platform_machine == 'amd64' or platform_machine == 'arm64' or platform_machine == 'x86_64'
     # via huggingface-hub
 httpcore==1.0.9
     # via httpx
@@ -171,11 +185,12 @@ httpx==0.28.1
     # via
     #   chonkie
     #   docling-slim
+    #   huggingface-hub
 httpx2==2.12.0
     # via openai
 httpx2-jsfetch==1.0 ; sys_platform == 'emscripten'
     # via httpx2
-huggingface-hub==0.36.2
+huggingface-hub==1.29.0
     # via
     #   verbatim-rag (pyproject.toml)
     #   accelerate
@@ -236,6 +251,7 @@ license-expression==30.4.4
 lxml==6.1.2
     # via
     #   doclang
+    #   docling-slim
     #   python-docx
     #   python-pptx
 mail-parser==4.6.4
@@ -371,7 +387,7 @@ nvidia-nvshmem-cu13==3.4.5 ; sys_platform == 'linux'
     # via torch
 nvidia-nvtx==13.0.85 ; (platform_machine == 'aarch64' and sys_platform == 'linux') or (platform_machine == 'x86_64' and sys_platform == 'linux')
     # via cuda-toolkit
-olefile==0.47
+olefile==0.47 ; sys_platform != 'darwin'
     # via python-oxmsg
 omegaconf==2.3.1
     # via rapidocr
@@ -520,7 +536,7 @@ python-dotenv==1.2.3
     #   docling-slim
     #   pydantic-settings
     #   pymilvus
-python-oxmsg==0.0.2
+python-oxmsg==0.0.2 ; sys_platform != 'darwin'
     # via docling-slim
 python-pptx==1.0.2
     # via docling-slim
@@ -566,14 +582,12 @@ requests==2.34.2
     #   cachecontrol
     #   datasets
     #   docling-slim
-    #   huggingface-hub
     #   mkdocs-material
     #   pip-audit
     #   pymilvus
     #   rapidocr
     #   requests-toolbelt
     #   tiktoken
-    #   transformers
     #   twine
 requests-toolbelt==1.0.0
     # via twine
@@ -636,14 +650,16 @@ starlette==1.6.0
 sympy==1.14.0
     # via torch
 tabulate==0.10.0
-    # via docling-core
+    # via
+    #   docling-core
+    #   docling-parse
 tenacity==9.1.4
     # via chonkie
 threadpoolctl==3.6.0
     # via scikit-learn
 tiktoken==0.14.0
     # via verbatim-rag (pyproject.toml)
-tokenizers==0.21.4
+tokenizers==0.23.1
     # via
     #   sentence-transformers
     #   transformers
@@ -679,7 +695,7 @@ tqdm==4.70.0
     #   semchunk
     #   sentence-transformers
     #   transformers
-transformers==4.53.3
+transformers==5.16.1
     # via
     #   verbatim-rag (pyproject.toml)
     #   docling-core
@@ -703,11 +719,17 @@ truststore==0.10.4 ; sys_platform != 'emscripten'
     #   httpx2
 twine==7.0.0
     # via verbatim-rag (pyproject.toml)
-typer==0.26.8
+typer==0.21.2 ; sys_platform == 'darwin'
+    # via
+    #   docling-core
+    #   docling-slim
+    #   transformers
+typer==0.26.8 ; sys_platform != 'darwin'
     # via
     #   doclang
     #   docling-core
     #   docling-slim
+    #   transformers
 typing-extensions==4.16.0
     # via
     #   aiohttp

@@ -16,6 +16,33 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-28 — transformers moved to 5.16.1, and predicting a side effect is not checking it
+
+The upgrade itself was undramatic. Three packages move on Linux — transformers,
+tokenizers, huggingface-hub — torch is untouched, and `pip-audit` stops reporting
+transformers. What made it worth deferring until there was time was that the test
+suite mocks transformers, so a green suite says nothing about whether models
+still load. They were therefore loaded for real: the default extractor with
+`trust_remote_code=True`, which returned a correct verbatim span, and the default
+cross-encoder reranker, which ranked the relevant passage first. The API image
+was rebuilt and carries 5.16.1.
+
+The first rebuild failed, and the reason is the part worth keeping. Adding
+`[tool.uv.sources]` earlier — so development resolves `verbatim-core` from
+`packages/core` rather than PyPI — changed what the documented regeneration
+command emits into `docker/constraints.txt`. It now writes `-e packages/core`,
+and pip refuses editable entries inside a constraints file, so the image stopped
+building.
+
+That side effect had been predicted at the time and written down next to the key.
+The note was correct and useless: it said the next regeneration would drop the
+`verbatim-core` pin, and nobody ran the command to find out what it would do
+instead. Several commits passed between introducing the breakage and discovering
+it, and only building the image found it.
+
+The regeneration command in `docker/overrides.txt` now carries
+`--no-emit-package verbatim-core` and the reason it is required.
+
 ## 2026-08-27 — The agent entry point is vendor-neutral and states boundaries, not just layout
 
 `AGENTS.md`, not a directory named after one assistant. The finding was that
