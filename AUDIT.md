@@ -1,0 +1,165 @@
+# Audit remediation
+
+Register of the ten audit reports dated 2026-08-26, all taken against commit
+`88f510a`. One row per finding: what it is, what was done, and why. Kept current
+as work lands.
+
+A `done` row states **how** the finding was closed and **why that way**, not just
+that it is closed. The method is the part a future reader cannot reconstruct: in
+a codebase whose conventions someone else set, the rejected alternatives were
+usually rejected for reasons visible only at the time. A row that says only
+"fixed" has thrown that away.
+
+This file tracks what happens to each finding. `DECISIONS.md` carries the longer
+reasoning behind the non-obvious calls; rows here link to it rather than repeat it.
+
+## Legend
+
+| Status | Meaning |
+|---|---|
+| `done` | Fixed on this branch |
+| `todo` | Accepted, not started |
+| `rejected` | Deliberately not doing — reason in the row |
+| `deferred` | Real, but out of reach in the time or ownership available — reason in the row |
+| `upstream` | Already fixed before the audit landed, in an upstream pull request |
+| `n/a` | Not applicable |
+
+Severity is the audit's own rating, kept verbatim so the register can be read
+against the reports.
+
+## Scoreboard
+
+| Audit | Score | Findings | done | todo | rejected / deferred | n/a |
+|---|---:|---:|---:|---:|---:|---:|
+| Dependency hygiene | 18/100 | 10 | 1 | 7 | 2 | 0 |
+| Security | 25/100 | 5 | 0 | 4 | 1 | 0 |
+| CI/CD | 32/100 | 6 | 0 | 4 | 2 | 0 |
+| Configuration hygiene | 40/100 | 4 | 0 | 4 | 0 | 0 |
+| Test quality | 42/100 | 5 | 0 | 4 | 1 | 0 |
+| Dead code | 57/100 | 7 | 0 | 6 | 1 | 0 |
+| Cognitive debt | 59/100 | 5 | 0 | 4 | 1 | 0 |
+| AI readiness | 60/100 | 5 | 0 | 4 | 1 | 0 |
+| Codebase hygiene | 71/100 | 5 | 0 | 3 | 2 | 0 |
+| Open-source readiness | 100/100 | 0 | — | — | — | — |
+
+The 100/100 on open-source readiness is not a result. The report applies a
+domain no-op for a pure fork with no delta of its own and skips all 14 criteria;
+the score means "nothing applicable to assess", not "excellent". It also stops
+being true the moment this branch exists.
+
+## Security — 25/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| SEC-1 | `docs.yml` installs unpinned public packages in a job with `contents: write` | critical | `todo` | The deploy job cannot be exercised from a pull request (it triggers on push to `main` only), so the fix will be a reviewed but unrun diff. To be stated plainly rather than claimed as verified. |
+| SEC-2 | `trust_remote_code=True` with no pinned `revision` — 7 call sites | high | `todo` | Confirmed in `packages/core/verbatim_core/extractors.py` (4), `verbatim_rag/rerankers.py` (2), `extractor_models/train.py` (1). |
+| SEC-3 | Raw Milvus filter expressions passed through unvalidated | medium | `rejected` | Replacing `filter: str` with a typed allowlist schema is a redesign of the library's public query API. Not a call to make unilaterally in a fork of someone else's project. |
+| SEC-4 | No bound on `num_docs` / context size; shared `rag.k` mutated per request | medium | `todo` | Worse than reported: `streaming.py:52` writes `num_docs` into the shared `self.rag.k` and only restores it on the success path — after any exception the mutated value persists for the process. Two concurrent streams also overwrite each other. |
+| SEC-5 | Production frontend build publishes source maps | low | `todo` | One line in `frontend/vite.config.js`. |
+
+Not raised by any of the ten reports, and arguably the largest gap: **prompt
+injection**. The product feeds retrieved document text straight into an LLM
+prompt, and no audit examines that surface. See "Beyond the audit" below.
+
+## Dependency hygiene — 18/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| DEP-1 | `axios 1.13.2` — vulnerability cluster in a direct frontend dependency | high | `todo` | Already filed upstream as issue #48; fixable without `--force`. |
+| DEP-2 | `transformers 4.53.3` — model-loading / code-execution advisories | high | `deferred` | The only high-severity finding deliberately postponed. A 4.x → 5.x major upgrade of the ML stack cannot be verified in the available time without running model downloads; a blind bump that breaks model loading is worse than the open advisory. Last item in the plan — done only if time remains, and only with a real run. |
+| DEP-3 | CI tools installed unpinned; docs deploy holds write permission | high | `todo` | Same root cause as SEC-1; both close together. |
+| DEP-4 | `datasets 3.4.1` — CVE-2026-66007 | medium | `todo` | Regenerating `docker/constraints.txt` needs an explicit upgrade flag: `uv pip compile` preserves existing pins and will not raise them on its own. |
+| DEP-5 | `aiohttp 3.14.2` — transitive, out-of-bounds read | medium | `todo` | Same regeneration caveat as DEP-4. |
+| DEP-6 | `python-multipart 0.0.22` in a stale `api/requirements.txt` | medium | `todo` | Confirmed: the file is referenced by nothing — not the Dockerfile, not CI. Deleting it is likely the right fix, not bumping it. |
+| DEP-7 | Docker base images pinned by floating tag, not digest | medium | `todo` | `python:3.11-slim`, `node:20-alpine`, `nginx:alpine`. |
+| DEP-8 | Frontend build-tool vulnerabilities (vite, postcss, rollup, …) | medium | `todo` | Build-time and dev only; not present in the nginx runtime image. |
+| DEP-9 | `setuptools<81` held by a documented exception with no review date | low | `rejected` | The exception is correct and well documented in `docker/overrides.txt`: milvus-lite 2.x imports `pkg_resources`, removed in setuptools 81. Adding a review date to someone else's constraint file without owning the upgrade path is paperwork, not a fix. |
+| DEP-10 | No root Python lockfile (improvement step 3) | — | `done` | **How:** `dev-constraints.txt`, generated by `make lock` (`uv pip compile pyproject.toml --extra dev --universal`), consumed by `make install` as `pip install -c`. **Why this way:** the repository already locks exactly like this — `docker/overrides.txt` documents the same command producing `docker/constraints.txt`, which the Dockerfile consumes with `pip install -c`. A first attempt used `uv.lock` + `uv sync` and was reverted: pip cannot read `uv.lock`, and CI installs with pip, so it would have pinned nothing that is actually built. `uv sync` also takes ownership of `.venv` and prunes it. See DECISIONS.md. |
+
+## CI/CD — 32/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| CI-1 | Checks are not required to merge into `main` | high | `rejected` | Branch protection on a fork where the same person opens and merges every pull request is ceremony, not a gate. The finding is correct for the upstream repository. |
+| CI-2 | No registered workflows or runs — Actions appear disabled on the fork | high | `todo` | Actions are off by default on forks. Must be enabled before anything on this branch is ever checked. |
+| CI-3 | Frontend build is not part of CI | medium | `todo` | |
+| CI-4 | Container images are never built in CI | medium | `todo` | |
+| CI-5 | Package release is fully manual | medium | `rejected` | Release automation for a fork that publishes nothing has no meaning. Belongs upstream. |
+| CI-6 | Runner image, action refs and pip installs allow version drift | low | `todo` | Overlaps DEP-3. |
+
+## Configuration hygiene — 40/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| CFG-1 | Declared API settings do not affect the container run path | high | `todo` | Confirmed: `MAX_QUESTION_LENGTH` is never read (`rag_service.py:29` hardcodes `1000`); `host`/`port`/`log_level` are read only in the `__main__` block, which the Dockerfile bypasses by invoking uvicorn directly. |
+| CFG-2 | `.env.example`, README, Compose and code defaults disagree | medium | `todo` | `INDEX_PATH` (`./index.db` vs `/data/index.db`) and `FRONTEND_PORT` (8080 vs 80). The port half is already fixed upstream in PR #46 — will be fixed here as well *and* cross-referenced, so the register does not read as if the work were new. |
+| CFG-3 | Configuration errors surface late or silently | medium | `todo` | Missing LLM key warns but does not stop startup; absent `TEMPLATES_PATH` falls back silently. |
+| CFG-4 | Runtime decisions hidden as code constants | low | `todo` | Model, endpoint, embedding and collection name in `api/dependencies.py`. Decide per value: promoted to a documented setting, or marked as a deliberate demo constant. |
+
+## Test quality — 42/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| TST-1 | The RAG happy path (`verbatim_rag`) has no tests at all | — | `todo` | Largest single gap. Needs fake vector-store and embedding providers so it runs without external services. |
+| TST-2 | No contract tests for the FastAPI surface | — | `todo` | Highest value per hour: it is where the confirmed live bugs are, so the tests double as proof of the fixes. |
+| TST-3 | No coverage target; coverage measured ad hoc for core only | — | `todo` | Core measures 48%; project-wide is estimated at ~14%. |
+| TST-4 | No frontend test framework at all | — | `deferred` | Standing up Vitest or Playwright is a day of work by itself, and the frontend components most in need of testing are the ones scheduled for deletion under DEAD-1. Revisit only if the schedule holds. |
+| TST-5 | No fake-provider harness; test layers not separated | — | `todo` | Prerequisite for TST-1; lands with it. |
+
+## Dead code — 57/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| DEAD-1 | Nine unreachable frontend components importing modules that no longer exist | HIGH | `todo` | Already filed upstream as issue #47. |
+| DEAD-2 | `template_id`, `MAX_QUESTION_LENGTH`, `TEMPLATES_PATH` declared but detached | HIGH | `todo` | Confirmed: `template_id` is accepted, forwarded to `APIService.query_async`, and then never read. The API tells clients it supports something it silently ignores. Overlaps CFG-1. |
+| DEAD-3 | Direct frontend dependencies with no live imports | MEDIUM | `todo` | `react-icons`, `cmdk`, several Radix primitives. Follows DEAD-1. |
+| DEAD-4 | API service layer partly bypassed; async signature out of sync | MEDIUM | `todo` | Understated in the report — this is a live defect, not untidiness. See BEY-1. |
+| DEAD-5 | Legacy template helpers in core no longer called | LOW | `todo` | `_generate_template`, `_fill_template_enhanced`, `MARKING_SYSTEM_PROMPT`. |
+| DEAD-6 | Zero-byte and copy-like public assets | LOW | `todo` | Four 0-byte PNGs plus ` copy` duplicates; overlaps HYG-3. |
+| DEAD-7 | Deprecation policy for `chunking` and the reserved `answer` parameter | INFO | `rejected` | Setting a removal version for a public compatibility layer is the upstream maintainer's call, not a fork's. |
+
+## Cognitive debt — 59/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| CD-1 | No local entry point carrying product intent and safe-change boundaries | medium | `todo` | Same item as AIR-1; one `AGENTS.md` closes both. |
+| CD-2 | Executable specs strong for core, weak for full RAG / API / frontend | medium | `todo` | Same work as TST-1 and TST-2. |
+| CD-3 | Fork decisions not reconstructable without upstream history | medium | `todo` | A fork-authority note, plus this file and `DECISIONS.md`. |
+| CD-4 | Repository identity points at upstream more strongly than at the fork | medium | `rejected` | `mkdocs.yml` and `CONTRIBUTING.md` correctly identify `KRLabsOrg/verbatim-rag`: that *is* the project. Rewriting them to point at the fork would misrepresent authorship. The honest fix is CD-3 — say plainly that this is a fork and what diverges. |
+| CD-5 | Historical design context (`docs/verbatim_blog.md`) outside the docs nav | low | `todo` | |
+
+## AI readiness — 60/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| AIR-1 | No `AGENTS.md` or equivalent cross-agent entry point | high | `todo` | Vendor-neutral on purpose: answering "no cross-agent entry point" with a Claude-specific directory would miss the point of the finding. |
+| AIR-2 | No one-command verification matrix per surface | high | `todo` | Partly addressed already — `make check` now runs the CI gate locally. The per-surface matrix still needs writing. |
+| AIR-3 | `/api/load-resources` and the env contract are out of sync | medium | `todo` | Confirmed: `frontend/src/contexts/ApiContext.js:218` posts to a route that `api/app.py` does not define. Overlaps DEAD-2. |
+| AIR-4 | No durable planning memory or handoff format | medium | `todo` | `DECISIONS.md` and this file are the start of it. |
+| AIR-5 | No product workflow and terminology map | medium | `rejected` | Writing a product map for someone else's project would be inventing intent rather than recording it. |
+
+## Codebase hygiene — 71/100
+
+| ID | Finding | Sev | Status | Note |
+|---|---|---|---|---|
+| HYG-1 | Frontend has no lint, format or test commands | medium | `todo` | |
+| HYG-2 | Public constructors overloaded with positional parameters (18 functions over 7) | medium | `rejected` | Converting `VerbatimRAG`, `VerbatimTransform` and the Milvus stores to keyword-only or config objects is a breaking change to the public API of an upstream library. Only meaningful as an upstream proposal. |
+| HYG-3 | Empty and duplicated assets | low | `todo` | Overlaps DEAD-6. |
+| HYG-4 | Notebook outputs carry the original author's home path | low | `todo` | `/Users/adamkovacs/...` in two notebooks under `docs/`. |
+| HYG-5 | Deprecated `verbatim_rag/chunking.py` retained as compatibility debt | low | `rejected` | Same reason as DEAD-7. |
+
+## Open-source readiness — 100/100
+
+`n/a`. Domain no-op for a pure fork; all 14 criteria skipped. Nothing to close.
+
+## Beyond the audit
+
+Found while verifying the reports against the tree. None of these appear in any
+of the ten documents.
+
+| ID | Finding | Status | Note |
+|---|---|---|---|
+| BEY-1 | `/api/query_async` returns 500 on every call | `todo` | `api/app.py:242` passes `filter=` and `search_params=` to `APIService.query_async`, whose signature accepts neither. The `TypeError` is swallowed by a broad `except Exception` and re-raised as a 500. The endpoint has never worked. |
+| BEY-2 | Two near-duplicate async endpoints, one broken | `todo` | `/api/query_async` goes through the service layer and fails; `/api/query/async` bypasses it and works. |
+| BEY-3 | `rag.k` is not restored when a stream raises | `todo` | `streaming.py` restores the shared value on the success path only; see SEC-4. |
+| BEY-4 | Prompt-injection surface is covered by no gate and by no audit | `todo` | Retrieved document text goes straight into an LLM prompt. The harness rule module treats this as untrusted input by default; the ten reports do not mention it. |
