@@ -28,7 +28,7 @@ dependencies = [
     "transformers==5.16.1",
     "torch>=2.6.0",
     "scikit-learn==1.6.1",
-    "datasets==3.4.1",
+    "datasets==5.0.1",
 
     # Document processing and parsing
     "docling",
