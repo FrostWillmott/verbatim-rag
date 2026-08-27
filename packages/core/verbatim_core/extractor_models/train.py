@@ -13,6 +13,7 @@ from transformers import AutoTokenizer
 from verbatim_core.extractor_models.dataset import QAData, QADataset
 from verbatim_core.extractor_models.model import QAModel
 from verbatim_core.extractor_models.trainer import Trainer, qa_collate_fn
+from verbatim_core.remote_code import warn_if_remote_code_is_unpinned
 
 # Set up logging
 logging.basicConfig(
@@ -42,7 +43,11 @@ def train(args):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     logger.info(f"Using device: {device}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
+    revision = getattr(args, "revision", None)
+    warn_if_remote_code_is_unpinned(args.model_name, revision, "AutoTokenizer")
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model_name, trust_remote_code=True, revision=revision
+    )
     logger.info(f"Loaded tokenizer: {args.model_name}")
 
     try:

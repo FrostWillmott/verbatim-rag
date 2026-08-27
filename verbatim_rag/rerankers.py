@@ -8,6 +8,7 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import List
 
+from verbatim_core.remote_code import warn_if_remote_code_is_unpinned
 from verbatim_rag.vector_stores.base import SearchResult
 
 
@@ -115,13 +116,15 @@ class SentenceTransformersReranker(BaseReranker):
         device: str = "cpu",
         rerank_k: int = 50,
         text_field: str = "text",
+        revision: str | None = None,
     ):
         super().__init__(rerank_k=rerank_k, text_field=text_field)
         try:
             from sentence_transformers import CrossEncoder
         except ImportError as exc:
             raise ImportError("pip install sentence-transformers") from exc
-        self.model = CrossEncoder(model, device=device, trust_remote_code=True)
+        warn_if_remote_code_is_unpinned(model, revision, "CrossEncoder")
+        self.model = CrossEncoder(model, device=device, trust_remote_code=True, revision=revision)
 
     def rerank(self, question: str, results: List[SearchResult]) -> List[SearchResult]:
         head, tail = self._split_results(results)
@@ -142,16 +145,19 @@ class JinaV3Reranker(BaseReranker):
         model: str = "jinaai/jina-reranker-v3",
         rerank_k: int = 50,
         text_field: str = "text",
+        revision: str | None = None,
     ):
         super().__init__(rerank_k=rerank_k, text_field=text_field)
         try:
             from transformers import AutoModel
         except ImportError as exc:
             raise ImportError("pip install transformers") from exc
+        warn_if_remote_code_is_unpinned(model, revision, "AutoModel")
         self.model = AutoModel.from_pretrained(
             model,
             dtype="auto",
             trust_remote_code=True,
+            revision=revision,
         )
         self.model.eval()
 

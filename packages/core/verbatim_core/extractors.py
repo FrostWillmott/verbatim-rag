@@ -18,6 +18,7 @@ from typing import Any, Dict, List
 from rapidfuzz.fuzz import partial_ratio_alignment
 
 from .llm_client import LLMClient
+from .remote_code import warn_if_remote_code_is_unpinned
 
 logger = logging.getLogger(__name__)
 
@@ -88,6 +89,7 @@ class ModelSpanExtractor(SpanExtractor):
         merge_gap_chars: int = 20,
         max_length: int = 8192,
         doc_stride: int = 256,
+        revision: str | None = None,
     ):
         """
         :param model_path: Path or HuggingFace id. Defaults to v2 generic.
@@ -102,10 +104,14 @@ class ModelSpanExtractor(SpanExtractor):
             separated by ≤ this many characters.
         :param max_length: (highlighter only) max tokens per sliding window.
         :param doc_stride: (highlighter only) token overlap between windows.
+        :param revision: pin the model repository to a commit. These models are
+            loaded with ``trust_remote_code=True``, so their code runs in this
+            process; unpinned, it is read from the default branch.
         """
         import torch
 
         self.model_path = model_path
+        self.revision = revision
         self.threshold = threshold
         self.min_span_chars = min_span_chars
         self.merge_gap_chars = merge_gap_chars
@@ -125,7 +131,7 @@ class ModelSpanExtractor(SpanExtractor):
                 device = "cpu"
         self.device = device
 
-        self._format = self._detect_format(model_path)
+        self._format = self._detect_format(model_path, revision)
         logger.info("Loading model from %s as format=%s on %s", model_path, self._format, device)
         if self._format == self._FORMAT_HIGHLIGHTER:
             self._init_highlighter(model_path)
@@ -133,13 +139,16 @@ class ModelSpanExtractor(SpanExtractor):
             self._init_qa_model(model_path)
 
     @staticmethod
-    def _detect_format(model_path: str) -> str:
+    def _detect_format(model_path: str, revision: str | None = None) -> str:
         """Return ``"highlighter"`` if the model exposes a ``.process()`` API
         via ``trust_remote_code``, else ``"qa_model"`` (legacy)."""
         try:
             from transformers import AutoConfig
 
-            config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
+            warn_if_remote_code_is_unpinned(model_path, revision, "AutoConfig")
+            config = AutoConfig.from_pretrained(
+                model_path, trust_remote_code=True, revision=revision
+            )
             auto_map = getattr(config, "auto_map", None) or {}
             target = auto_map.get("AutoModel") or auto_map.get("AutoModelForTokenClassification")
             if target and "Highlighter" in target:
@@ -151,7 +160,10 @@ class ModelSpanExtractor(SpanExtractor):
     def _init_highlighter(self, model_path: str) -> None:
         from transformers import AutoModel
 
-        self.model = AutoModel.from_pretrained(model_path, trust_remote_code=True)
+        warn_if_remote_code_is_unpinned(model_path, self.revision, "AutoModel")
+        self.model = AutoModel.from_pretrained(
+            model_path, trust_remote_code=True, revision=self.revision
+        )
         self.model.to(self.device)
         self.model.eval()
         self.tokenizer = None  # the highlighter loads its tokenizer internally
@@ -305,6 +317,7 @@ class SemanticHighlightExtractor(SpanExtractor):
         min_span_tokens: int = 3,
         merge_gap: int = 2,
         max_tokens: int = 4096,
+        revision: str | None = None,
     ):
         """
         Initialize the semantic highlight extractor.
@@ -317,6 +330,8 @@ class SemanticHighlightExtractor(SpanExtractor):
         :param min_span_tokens: Minimum tokens for a valid span (spans mode only)
         :param merge_gap: Merge spans separated by <= N tokens (spans mode only)
         :param max_tokens: Token limit of the extractor model
+        :param revision: pin the model repository to a commit; see
+            ModelSpanExtractor for why this matters.
         """
         import torch
         from transformers import AutoModel
@@ -333,8 +348,9 @@ class SemanticHighlightExtractor(SpanExtractor):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
         logger.info("Loading semantic highlight model: %s...", model_name)
+        warn_if_remote_code_is_unpinned(model_name, revision, "AutoModel")
         self.model = AutoModel.from_pretrained(
-            model_name, trust_remote_code=True, max_length=max_tokens
+            model_name, trust_remote_code=True, max_length=max_tokens, revision=revision
         )
         self.tokenizer = self.model.tokenizer
         self.max_tokens = max_tokens
