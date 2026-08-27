@@ -37,6 +37,19 @@ class TestDocumentedEnvironmentNames:
 
         assert APIConfig(_env_file=None).max_question_length == 42
 
+    def test_log_level_reaches_the_logging_configuration(self, monkeypatch):
+        import logging
+
+        from api.app import create_app
+
+        previous = logging.getLogger().level
+        monkeypatch.setenv("LOG_LEVEL", "DEBUG")
+        try:
+            create_app()
+            assert logging.getLogger().level == logging.DEBUG
+        finally:
+            logging.getLogger().setLevel(previous)
+
     def test_defaults_apply_when_nothing_is_set(self):
         config = APIConfig(_env_file=None)
 

@@ -16,6 +16,36 @@ repository wants to know why the software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-27 — Three identical-looking settings got three different answers
+
+`MAX_QUESTION_LENGTH`, `TEMPLATES_PATH` and `template_id` were all reported as
+"declared but detached". They are not the same problem.
+
+The first two had a consumer to connect to, so they were connected.
+`MAX_QUESTION_LENGTH` now reaches `APIService`, which previously hardcoded
+`1000` and did not receive the config at all. `TEMPLATES_PATH` now loads into the
+template manager that actually renders answers, instead of only the separate one
+behind `/api/templates`.
+
+`template_id` had no consumer anywhere: neither `VerbatimRAG.query` nor
+`query_async` accepts such a parameter, so honouring it would mean changing the
+public API of the upstream library — not a fork owner's call. It is removed from
+the schema instead, and `QueryRequestModel` now forbids extra fields, so a client
+that sends it gets a 422 rather than a 200 with an answer that ignored it.
+Silence was the defect; rejecting is the fix.
+
+The obvious way to wire `TEMPLATES_PATH` would have been to hand the API's
+existing `TemplateManager` to `VerbatimRAG`, which accepts one. That would have
+been a regression: the API builds it with no `llm_client`, and a manager without
+one has `strategies["contextual"] is None`, so the mode falls back to `static`
+and the framing of every answer changes silently. There is a test pinning that
+behaviour, because it is the reason for the shape of the code.
+
+`API_HOST` and `API_PORT` stay direct-run-only. The container's entrypoint gives
+uvicorn its host and port; making the Dockerfile read these would move deployment
+configuration into the image for no gain. That is a decision, not an oversight,
+so it is written down rather than left looking like the same bug.
+
 ## 2026-08-27 — Secret files are blocked by an enforced rule, not a declared one
 
 Reads of `.env`, `*.local` env files, `*.pem` and `*.key` are denied in

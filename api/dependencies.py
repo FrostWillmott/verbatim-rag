@@ -3,6 +3,7 @@ Dependency injection setup for FastAPI
 """
 
 import logging
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
@@ -19,6 +20,21 @@ logger = logging.getLogger(__name__)
 _rag_instance: VerbatimRAG = None
 _template_manager: TemplateManager = None
 _api_service: APIService = None
+
+
+def apply_template_config(manager: TemplateManager, templates_path: Path) -> bool:
+    """Load TEMPLATES_PATH into a template manager, if the file is there.
+
+    Returns whether it was applied. Split out from the construction paths so the
+    behaviour can be tested without standing up Milvus and an embedding model.
+    """
+    if not templates_path.exists():
+        logger.info("Template config not found at %s; using built-in defaults", templates_path)
+        return False
+
+    manager.load(str(templates_path))
+    logger.info("Template config loaded from %s", templates_path)
+    return True
 
 
 def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> VerbatimRAG:
@@ -60,6 +76,14 @@ def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> Verba
                 template_mode="contextual",
                 llm_client=llm_client,
             )
+            # The manager VerbatimRAG builds for itself is the one that renders
+            # answers. Loading the config into the separate manager behind
+            # /api/templates left TEMPLATES_PATH with no effect on any query.
+            # Passing that manager in instead would be wrong: it is built without
+            # an llm_client and defaults to "static", so contextual mode would
+            # break and every answer's framing would change silently.
+            apply_template_config(_rag_instance.template_manager, config.templates_path)
+
             logger.info(f"RAG instance created with index path: {config.index_path}")
         except Exception as e:
             logger.error(f"Failed to create RAG instance: {e}")
@@ -79,17 +103,7 @@ def get_template_manager(
     if _template_manager is None:
         try:
             _template_manager = TemplateManager()
-
-            # Load templates if file exists
-            if config.templates_path.exists():
-                _template_manager.load(str(config.templates_path))
-                logger.info(
-                    f"Template manager created and loaded config from: {config.templates_path}"
-                )
-            else:
-                logger.info(
-                    f"Template manager created without config (file not found: {config.templates_path})"
-                )
+            apply_template_config(_template_manager, config.templates_path)
         except Exception as e:
             logger.error(f"Failed to create template manager: {e}")
             raise HTTPException(
@@ -103,12 +117,15 @@ def get_template_manager(
 def get_api_service(
     rag: Annotated[VerbatimRAG, Depends(get_rag_instance)],
     template_manager: Annotated[TemplateManager, Depends(get_template_manager)],
+    config: Annotated[APIConfig, Depends(get_config)],
 ) -> APIService:
     """Get API service instance"""
     global _api_service
 
     if _api_service is None:
-        _api_service = APIService(rag, template_manager)
+        _api_service = APIService(
+            rag, template_manager, max_question_length=config.max_question_length
+        )
         logger.info("API service created")
 
     return _api_service

@@ -12,7 +12,7 @@ from typing import Annotated, Any, Optional
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse as FastAPIStreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 # Check for OpenAI API key
 if "OPENAI_API_KEY" not in os.environ:
@@ -40,15 +40,18 @@ from api.dependencies import (
 )
 from api.services.rag_service import APIService
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
 # Request/Response models
 class QueryRequestModel(BaseModel):
+    # extra="forbid" so an unsupported parameter is refused instead of silently
+    # dropped. `template_id` used to be declared here and reached no consumer at
+    # all — neither VerbatimRAG.query nor query_async has such a parameter — so a
+    # client could select a template and get an unchanged answer with a 200.
+    model_config = ConfigDict(extra="forbid")
+
     question: str
-    template_id: Optional[str] = None
     k: Optional[int] = None
     hybrid_weights: Optional[dict[str, float]] = None
     rrf_k: int = 60
@@ -104,6 +107,10 @@ async def lifespan(app: FastAPI):
 def create_app() -> FastAPI:
     """Create FastAPI application with proper configuration"""
     config = get_config()
+
+    # force=True because this may run after logging is already configured; without
+    # it basicConfig is a no-op and LOG_LEVEL would go on being ignored.
+    logging.basicConfig(level=config.log_level.upper(), force=True)
 
     app = FastAPI(
         title="Verbatim RAG API",
@@ -239,7 +246,6 @@ async def query_async_endpoint(
         api_service.validate_query_request(request.question)
         response = await api_service.query_async(
             request.question,
-            request.template_id,
             k=request.k,
             hybrid_weights=request.hybrid_weights,
             rrf_k=request.rrf_k,

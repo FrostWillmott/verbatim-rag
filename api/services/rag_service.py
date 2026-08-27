@@ -15,9 +15,15 @@ logger = logging.getLogger(__name__)
 class APIService:
     """Service layer for RAG operations"""
 
-    def __init__(self, rag: VerbatimRAG, template_manager: TemplateManager):
+    def __init__(
+        self,
+        rag: VerbatimRAG,
+        template_manager: TemplateManager,
+        max_question_length: int = 1000,
+    ):
         self.rag = rag
         self.template_manager = template_manager
+        self.max_question_length = max_question_length
         logger.info("APIService initialized")
 
     def validate_query_request(self, question: str) -> None:
@@ -25,13 +31,12 @@ class APIService:
         if not question or not question.strip():
             raise ValueError("Question cannot be empty")
 
-        if len(question) > 1000:
-            raise ValueError("Question too long (max 1000 characters)")
+        if len(question) > self.max_question_length:
+            raise ValueError(f"Question too long (max {self.max_question_length} characters)")
 
     def query(
         self,
         question: str,
-        template_id: Optional[str] = None,
         k: Optional[int] = None,
         hybrid_weights: Optional[Dict[str, float]] = None,
         rrf_k: int = 60,
@@ -57,7 +62,6 @@ class APIService:
     async def query_async(
         self,
         question: str,
-        template_id: Optional[str] = None,
         k: Optional[int] = None,
         hybrid_weights: Optional[Dict[str, float]] = None,
         rrf_k: int = 60,
