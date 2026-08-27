@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 // Create context
@@ -17,12 +17,12 @@ export const ApiProvider = ({ children }) => {
 
   // Add a ref to track document updates
   const documentUpdateTimeoutRef = useRef(null);
-  
+
   // Function to check if resources are loaded
   const refreshStatus = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await axios.get('/api/status');
       setIsResourcesLoaded(response.data.resources_loaded);
@@ -45,10 +45,10 @@ export const ApiProvider = ({ children }) => {
       setError('Resources not loaded. Please wait for the system to initialize.');
       return null;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     // Create an initial query result structure
     setCurrentQuery({
       question,
@@ -56,7 +56,7 @@ export const ApiProvider = ({ children }) => {
       answer: null,
       structured_answer: null
     });
-    
+
     try {
       // Use fetch for streaming instead of axios
       const response = await fetch('/api/query/stream', {
@@ -71,32 +71,32 @@ export const ApiProvider = ({ children }) => {
           num_docs: numDocs
         })
       });
-      
+
       if (!response.ok) {
         throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
       }
-      
+
       const reader = response.body.getReader();
       let buffer = '';
       const decoder = new TextDecoder();
-      
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
-        
+
         // Decode chunk and add to buffer
         buffer += decoder.decode(value, { stream: true });
-        
+
         // Split by newlines but keep the last potentially incomplete line
         const lines = buffer.split('\n');
         buffer = lines.pop() || ''; // Keep last line in buffer if incomplete
-        
+
         // Process only complete lines
         for (const line of lines) {
           if (!line.trim()) continue;
           try {
             let data;
-            
+
             // Handle both normal and double-escaped JSON (for Fly.io compatibility)
             try {
               // First try normal JSON parsing (works locally)
@@ -111,12 +111,12 @@ export const ApiProvider = ({ children }) => {
                 throw e; // Re-throw if neither format works
               }
             }
-            
+
             if (data.error) {
               setError(data.error);
               continue;
             }
-            
+
             switch (data.type) {
               case 'documents':
                 // Update documents incrementally
@@ -125,7 +125,7 @@ export const ApiProvider = ({ children }) => {
                   documents: data.data
                 }));
                 break;
-                
+
               case 'highlights':
                 // Update documents with highlights
                 setCurrentQuery(prev => {
@@ -134,20 +134,20 @@ export const ApiProvider = ({ children }) => {
                   data.data.forEach(doc => {
                     highlightMap[doc.content] = doc.highlights || [];
                   });
-                  
+
                   // Update each document with its highlights
                   const updatedDocs = prev.documents.map(doc => ({
                     ...doc,
                     highlights: highlightMap[doc.content] || []
                   }));
-                  
+
                   return {
                     ...prev,
                     documents: updatedDocs
                   };
                 });
                 break;
-                
+
               case 'answer':
                 // Update with final answer
                 setCurrentQuery(prev => ({
@@ -155,12 +155,12 @@ export const ApiProvider = ({ children }) => {
                   answer: data.data.answer,
                   structured_answer: data.data.structured_answer
                 }));
-                
+
                 if (data.done) {
                   setIsLoading(false);
                 }
                 break;
-                
+
               default:
                 console.warn('Unknown response type:', data.type);
             }
@@ -170,12 +170,12 @@ export const ApiProvider = ({ children }) => {
           }
         }
       }
-      
+
       // Process any remaining buffer content
       if (buffer.trim()) {
         try {
           let data;
-          
+
           // Handle both normal and double-escaped JSON (for Fly.io compatibility)
           try {
             data = JSON.parse(buffer);
@@ -187,7 +187,7 @@ export const ApiProvider = ({ children }) => {
               throw e;
             }
           }
-          
+
           // Process final data if needed
           if (data.type === 'answer' && data.done) {
             setIsLoading(false);
@@ -197,7 +197,7 @@ export const ApiProvider = ({ children }) => {
           console.error('Raw buffer:', buffer);
         }
       }
-      
+
       return currentQuery;
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message;
@@ -212,17 +212,17 @@ export const ApiProvider = ({ children }) => {
   const loadResources = useCallback(async (apiKey = null) => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const payload = apiKey ? { api_key: apiKey } : {};
       const response = await axios.post('/api/load-resources', payload);
-      
+
       setIsResourcesLoaded(response.data.success);
-      
+
       if (!response.data.success) {
         setError(response.data.message);
       }
-      
+
       return response.data;
     } catch (err) {
       const errorMessage = err.response?.data?.detail || err.message;
@@ -245,19 +245,19 @@ export const ApiProvider = ({ children }) => {
 
   // Force UI updates when documents change
   useEffect(() => {
-    if (currentQuery && currentQuery.documents && currentQuery.documents.length > 0 && isLoading) {
+    if (currentQuery?.documents?.length > 0 && isLoading) {
       // Clear any existing timeout
       if (documentUpdateTimeoutRef.current) {
         clearTimeout(documentUpdateTimeoutRef.current);
       }
-      
+
       // Force a UI update after a short delay
       documentUpdateTimeoutRef.current = setTimeout(() => {
         // This is just to trigger a re-render
         setCurrentQuery(prev => ({...prev}));
       }, 50);
     }
-    
+
     // Cleanup on unmount
     return () => {
       if (documentUpdateTimeoutRef.current) {
@@ -283,4 +283,4 @@ export const ApiProvider = ({ children }) => {
   return <ApiContext.Provider value={value}>{children}</ApiContext.Provider>;
 };
 
-export default ApiContext; 
+export default ApiContext;

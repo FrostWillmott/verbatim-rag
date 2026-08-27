@@ -55,13 +55,13 @@ against the reports.
 |---|---:|---:|---:|---:|---:|---:|
 | Dependency hygiene | 18/100 | 10 | 5 | 4 | 1 | 0 |
 | Security | 25/100 | 5 | 3 | 1 | 1 | 0 |
-| CI/CD | 32/100 | 6 | 1 | 3 | 2 | 0 |
+| CI/CD | 32/100 | 6 | 2 | 2 | 2 | 0 |
 | Configuration hygiene | 40/100 | 4 | 3 | 1 | 0 | 0 |
 | Test quality | 42/100 | 5 | 4 | 0 | 1 | 0 |
 | Dead code | 57/100 | 7 | 4 | 2 | 1 | 0 |
 | Cognitive debt | 59/100 | 5 | 2 | 2 | 1 | 0 |
 | AI readiness | 60/100 | 5 | 3 | 1 | 1 | 0 |
-| Codebase hygiene | 71/100 | 5 | 1 | 1 | 3 | 0 |
+| Codebase hygiene | 71/100 | 5 | 2 | 1 | 2 | 0 |
 | Open-source readiness | 100/100 | 0 | — | — | — | — |
 
 The 100/100 on open-source readiness is not a result. The report applies a
@@ -106,7 +106,7 @@ suppression, not invention.
 |---|---|---|---|---|
 | CI-1 | Checks are not required to merge into `main` | high | `rejected` | Branch protection on a fork where the same person opens and merges every pull request is ceremony, not a gate. The finding is correct for the upstream repository. |
 | CI-2 | No registered workflows or runs — Actions appear disabled on the fork | high | `todo` | Actions are off by default on forks. Must be enabled before anything on this branch is ever checked. |
-| CI-3 | Frontend build is not part of CI | medium | `todo` | |
+| CI-3 | Frontend build is not part of CI | medium | `done` | **How:** a `frontend` job on Node 20 — required by vite 7 — running `npm ci`, `npm run lint`, `npm run build`. Verified by reproducing exactly that sequence in a `node:20-alpine` container against read-only mounts of the manifest, lockfile, config and sources. **Why a separate job:** it needs a Node toolchain the Python matrix has no use for. |
 | CI-4 | Container images are never built in CI | medium | `todo` | |
 | CI-5 | Package release is fully manual | medium | `rejected` | Release automation for a fork that publishes nothing has no meaning. Belongs upstream. |
 | CI-6 | Runner image, action refs and pip installs allow version drift | low | `done` | **How:** pip installs pinned via constraints (DEP-3); `actions/checkout` and `actions/setup-python` pinned to commit SHAs with the tag kept as a trailing comment. **Why this way:** a tag is mutable and an action runs as code inside the workflow, so it belongs in the same class as a package. `ubuntu-latest` is deliberately left floating: it is GitHub-maintained, pinning it buys maintenance work rather than supply-chain safety. |
@@ -166,7 +166,7 @@ suppression, not invention.
 
 | ID | Finding | Sev | Status | Note |
 |---|---|---|---|---|
-| HYG-1 | Frontend has no lint, format or test commands | medium | `deferred` | Half of it landed: `.editorconfig` fixes the shared style, which is the alternative the report itself offers, and it was checked against the actual indentation rather than assumed. The linter did not, and the reason is measured rather than assumed. **ESLint** cannot be installed here without `--force`: `eslint-plugin-react@7.37.5` accepts eslint up to `^9.7` while `@eslint/js@10` pulls eslint 10, and npm calls the forced resolution potentially broken. The React plugin ecosystem is mid-transition. **Biome** installs cleanly as a single dependency and finds real problems — `parseInt` without a radix, unused imports, `forEach` returning a value, array-index keys. But its formatter rewrote **12 of 12 files, 577 insertions and 558 deletions**, and 11 lint errors survived the safe autofixes, including three false positives on Tailwind's `@tailwind` at-rules. Adopting it means either mass-reformatting inherited code — refused for ruff on the same grounds, with the same reasoning — or shipping a gate configured down to what already passes. Neither is a ten-minute change, and both need someone who can exercise the UI. Left open with the measurement attached. |
+| HYG-1 | Frontend has no lint, format or test commands | medium | `done` | **How:** Biome — one dependency, no plugin ecosystem — as `npm run lint`, wired into a new CI job. Ten findings fixed by hand rather than by autofix: two `parseInt` calls without a radix, four unused React imports (checked first that no `React.` reference remained in those files), an optional-chain simplification, a `forEach` callback returning a value, and two buttons without `type`. Six rules are switched off, each with its reason in `biome.jsonc`, all of the same kind — they need a decision about a UI that cannot be exercised here, and there are no frontend tests to catch a mistake. **Formatter deliberately off.** Enabling it rewrote all twelve files in one pass, which is the mass reformat of inherited code this branch refused for ruff. `.editorconfig` covers shared whitespace instead; ESLint was ruled out separately because `eslint-plugin-react` still trails eslint 10 and npm will not resolve the pair without `--force`. **A wrinkle worth recording:** a standalone `npx biome` run reported clean while the same check under `npm ci` found six more. Verification has to use the invocation CI uses. |
 | HYG-2 | Public constructors overloaded with positional parameters (18 functions over 7) | medium | `rejected` | Converting `VerbatimRAG`, `VerbatimTransform` and the Milvus stores to keyword-only or config objects is a breaking change to the public API of an upstream library. Only meaningful as an upstream proposal. |
 | HYG-3 | Empty and duplicated assets | low | `done` | Same work as DEAD-6. |
 | HYG-4 | Notebook outputs carry the original author's home path | low | `todo` | `/Users/adamkovacs/...` in two notebooks under `docs/`. |

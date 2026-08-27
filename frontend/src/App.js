@@ -1,4 +1,3 @@
-import React from 'react';
 import { ApiProvider } from './contexts/ApiContext';
 import CleanFactInterface from './components/CleanFactInterface';
 import ErrorBoundary from './components/ErrorBoundary';

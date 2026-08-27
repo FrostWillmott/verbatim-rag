@@ -1,0 +1,49 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.10/schema.json",
+  // Linting only. The formatter stays off: its style differs from the code that
+  // is already here, and turning it on rewrote all twelve files in one pass —
+  // the same mass reformat of inherited code this repository refused for ruff.
+  // Shared whitespace lives in ../.editorconfig instead.
+  //
+  // CSS is out of scope: src/index.css is Tailwind directives (@tailwind,
+  // @apply, @layer), which Biome reads as unknown at-rules.
+  "files": {
+    "includes": ["src/**/*.js", "src/**/*.jsx"]
+  },
+  "formatter": {
+    "enabled": false
+  },
+  "linter": {
+    "enabled": true,
+    // Every rule turned off below says why. Each needs a decision about the UI
+    // that cannot be made without exercising it, and this repository has no
+    // frontend tests to catch a mistake.
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        // `while ((match = regex.exec(value)) !== null)` — the idiomatic exec
+        // loop, and it sits inside the citation parser, the core interaction.
+        "noAssignInExpressions": "off",
+        // Five list renders keyed by array index. Fixing needs a stable id per
+        // item; spans and citations may not have one, and getting it wrong
+        // breaks React reconciliation in ways a build will not show.
+        "noArrayIndexKey": "off"
+      },
+      "a11y": {
+        // Citations render as <sup role="button">. Correct markup means
+        // redesigning the inline citation element, which is the product's
+        // signature interaction.
+        "useSemanticElements": "off",
+        "noNoninteractiveElementToInteractiveRole": "off",
+        // A label with no associated control; which control it belongs to is
+        // not derivable from the markup alone.
+        "noLabelWithoutControl": "off"
+      },
+      "correctness": {
+        // Changing a hook's dependency array changes when effects re-run. Not a
+        // blind edit in a streaming UI.
+        "useExhaustiveDependencies": "off"
+      }
+    }
+  }
+}

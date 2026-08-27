@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,8 +25,8 @@ const MarkdownComponents = {
       {children}
     </blockquote>
   ),
-  code: ({ inline, children }) => 
-    inline 
+  code: ({ inline, children }) =>
+    inline
       ? <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono">{children}</code>
       : <pre className="bg-muted p-3 rounded text-sm font-mono overflow-x-auto mb-2"><code>{children}</code></pre>,
   table: ({ children }) => (
@@ -86,12 +86,12 @@ const CleanFactInterface = () => {
   // Group chunks by document_id (not by title/source)
   const groupDocuments = () => {
     if (!currentQuery?.documents) return [];
-    
+
     const documentGroups = {};
-    
+
     currentQuery.documents.forEach((chunk, chunkIndex) => {
       const docId = chunk.metadata?.document_id || `doc_${chunkIndex}`;
-      
+
       if (!documentGroups[docId]) {
         documentGroups[docId] = {
           id: docId,
@@ -102,12 +102,12 @@ const CleanFactInterface = () => {
           allHighlights: []
         };
       }
-      
+
       documentGroups[docId].chunks.push({
         ...chunk,
         originalIndex: chunkIndex
       });
-      
+
       // Collect highlights
       if (chunk.highlights) {
         chunk.highlights.forEach((highlight) => {
@@ -118,7 +118,7 @@ const CleanFactInterface = () => {
         });
       }
     });
-    
+
     return Object.values(documentGroups);
   };
 
@@ -127,14 +127,14 @@ const CleanFactInterface = () => {
 
   // Handle fact click with scroll-to-highlight
   const handleFactClick = (fact) => {
-    const targetGroupIndex = groupedDocuments.findIndex(group => 
+    const targetGroupIndex = groupedDocuments.findIndex(group =>
       group.chunks.some(chunk => chunk.originalIndex === fact.docIndex)
     );
-    
+
     if (targetGroupIndex !== -1) {
       setSelectedDocument(targetGroupIndex);
       setHighlightedFactId(fact.id);
-      
+
       // Scroll to highlight after a short delay to allow DOM update
       setTimeout(() => {
         const highlightElement = document.querySelector(`[data-highlight-id="${fact.id}"]`);
@@ -143,14 +143,14 @@ const CleanFactInterface = () => {
           if (scrollContainer) {
             const elementTop = highlightElement.offsetTop;
             const containerHeight = scrollContainer.clientHeight;
-            
+
             // Center the highlight in the viewport with enhanced smooth scrolling
             const targetScroll = elementTop - containerHeight / 2;
-            scrollContainer.scrollTo({ 
-              top: Math.max(0, targetScroll), 
-              behavior: 'smooth' 
+            scrollContainer.scrollTo({
+              top: Math.max(0, targetScroll),
+              behavior: 'smooth'
             });
-            
+
             // Add a subtle flash effect to help user see the highlighted text
             setTimeout(() => {
               if (highlightElement) {
@@ -203,7 +203,7 @@ const CleanFactInterface = () => {
           while ((match = regex.exec(value)) !== null) {
             const idx = match.index;
             if (idx > last) newNodes.push({ type: 'text', value: value.slice(last, idx) });
-            const num = parseInt(match[1]);
+            const num = parseInt(match[1], 10);
             newNodes.push({
               type: 'link',
               url: `#citation-${num}`,
@@ -219,7 +219,7 @@ const CleanFactInterface = () => {
           }
           return;
         }
-        if (node.children) [...node.children].forEach(child => walk(child, node));
+        if (node.children) { [...node.children].forEach(child => { walk(child, node); }); }
       };
       walk(tree, null);
     };
@@ -233,7 +233,7 @@ const CleanFactInterface = () => {
             a: ({ node, children, ...rest }) => {
               const citationNum = node?.properties?.['data-citation'];
               if (citationNum) {
-                const num = parseInt(citationNum);
+                const num = parseInt(citationNum, 10);
                 const fact = facts.find(f => f.citationNumber === num);
                 return (
                   <InlineCitation
@@ -294,10 +294,10 @@ const CleanFactInterface = () => {
         <div className="space-y-4">
           {documentGroup.chunks.map((chunk, chunkIndex) => {
             const highlights = chunk.highlights || [];
-            
+
             // Create highlight map
             const highlightMap = highlights.map((highlight) => {
-              const factForHighlight = facts.find(f => 
+              const factForHighlight = facts.find(f =>
                 f.docIndex === chunk.originalIndex && f.text === highlight.text
               );
               return {
@@ -349,7 +349,7 @@ const CleanFactInterface = () => {
                     <div className="flex-1 border-t border-dashed border-border"></div>
                   </div>
                 )}
-                
+
                 {/* Chunk content */}
                 <div className="bg-card border border-border rounded-lg p-4 lg:p-6">
                   <div className="text-base lg:text-lg leading-7 lg:leading-8 text-foreground max-w-full overflow-hidden">
@@ -366,7 +366,7 @@ const CleanFactInterface = () => {
                                 : 'bg-accent/50 hover:bg-accent hover:shadow-sm'
                             }`}
                           >
-                            <ReactMarkdown 
+                            <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={MarkdownComponents}
                             >
@@ -378,7 +378,7 @@ const CleanFactInterface = () => {
                       // For non-highlighted content, use ReactMarkdown
                       return (
                         <div key={index}>
-                          <ReactMarkdown 
+                          <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={MarkdownComponents}
                           >
@@ -404,7 +404,7 @@ const CleanFactInterface = () => {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.7; }
         }
-        
+
         @keyframes citationPulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
@@ -415,6 +415,7 @@ const CleanFactInterface = () => {
       <header className="bg-white border-b border-border py-3 lg:py-4 shadow-sm flex-shrink-0">
         <div className="max-w-[1800px] mx-auto px-4 lg:px-8 flex items-center justify-between">
           <button
+            type="button"
             onClick={goHome}
             className="hover:opacity-70 transition-opacity cursor-pointer"
             title="Go home"
@@ -528,6 +529,7 @@ const CleanFactInterface = () => {
                         "Which datasets and metrics are used for evaluation?"
                       ].map((sampleQuestion, index) => (
                         <button
+                          type="button"
                           key={index}
                           onClick={() => setQuestion(sampleQuestion)}
                           className="w-full text-left p-4 lg:p-5 bg-card border-2 border-border hover:border-primary rounded-lg transition-all hover:shadow-md group"

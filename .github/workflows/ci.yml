@@ -59,6 +59,22 @@ jobs:
       - run: pip install -c dev-constraints.txt -e .
       - run: pytest tests/ -v --cov --cov-report=term
 
+  frontend:
+    # The frontend was outside CI entirely: a broken build or a lint regression
+    # reached main unchallenged. Node 20 because vite 7 requires >= 20.19.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "20"
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
   package-build:
     runs-on: ubuntu-latest
     steps:

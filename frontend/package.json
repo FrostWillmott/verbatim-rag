@@ -18,11 +18,13 @@
     "tailwind-merge": "^3.3.1"
   },
   "scripts": {
-    "dev": "vite",
     "build": "vite build",
+    "dev": "vite",
+    "lint": "biome lint src",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.10",
     "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
