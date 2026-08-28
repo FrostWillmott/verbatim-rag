@@ -253,12 +253,18 @@ async def get_documents(
             if hasattr(rag.index.vector_store, "get_all_documents"):
                 docs = rag.index.vector_store.get_all_documents()
                 for doc in docs or []:
+                    # None, not 0: VerbatimIndex stores documents with an empty
+                    # raw_content (index.py has the TODO), so len() here reported
+                    # a confident zero for every document ever indexed. A length
+                    # that cannot be computed is not a length of zero — the same
+                    # distinction /api/status makes for document_count.
+                    raw_content = doc.get("raw_content") or ""
                     documents.append(
                         {
                             "id": doc.get("id", "unknown"),
                             "title": doc.get("title", "Unknown Document"),
                             "source": doc.get("source", "Unknown source"),
-                            "content_length": len(doc.get("raw_content", "")),
+                            "content_length": len(raw_content) if raw_content else None,
                         }
                     )
             else:

@@ -466,3 +466,27 @@ class TestAProviderFailureIsNotAnEmptyCorpus:
 
         assert response.status_code == 503
         assert "401 Invalid API Key" in response.json()["detail"]
+
+
+class TestDocumentLengthIsNotInventedWhenItIsUnknown:
+    """BEY-16: the store keeps no raw text, so len() reported 0 for every
+    document. A length nobody can compute is not a length of zero.
+    """
+
+    def test_a_document_without_stored_text_reports_null(self, api_client, fake_rag):
+        fake_rag.index.vector_store.get_all_documents.return_value = [
+            {"id": "d1", "title": "README", "source": "/app/README.md", "raw_content": ""}
+        ]
+
+        body = api_client.get("/api/documents").json()
+
+        assert body["documents"][0]["content_length"] is None
+
+    def test_a_document_with_stored_text_reports_its_length(self, api_client, fake_rag):
+        fake_rag.index.vector_store.get_all_documents.return_value = [
+            {"id": "d1", "title": "N", "source": "/n.md", "raw_content": "12345"}
+        ]
+
+        body = api_client.get("/api/documents").json()
+
+        assert body["documents"][0]["content_length"] == 5
