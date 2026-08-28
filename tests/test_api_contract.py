@@ -490,3 +490,24 @@ class TestDocumentLengthIsNotInventedWhenItIsUnknown:
         body = api_client.get("/api/documents").json()
 
         assert body["documents"][0]["content_length"] == 5
+
+
+class TestTheDuplicateAsyncRouteIsMarkedNotRemoved:
+    """BEY-2: two routes with identical behaviour, and no deprecation policy to
+    remove either under. The newer name carries the marker; both still work.
+    """
+
+    def test_the_newer_duplicate_is_advertised_as_deprecated(self, api_client):
+        schema = api_client.get("/openapi.json").json()
+
+        assert schema["paths"]["/api/query_async"]["post"]["deprecated"] is True
+
+    def test_the_route_it_duplicates_is_not(self, api_client):
+        schema = api_client.get("/openapi.json").json()
+
+        assert schema["paths"]["/api/query/async"]["post"].get("deprecated", False) is False
+
+    def test_the_deprecated_route_still_answers(self, api_client):
+        response = api_client.post("/api/query_async", json={"question": "What is X?"})
+
+        assert response.status_code == 200

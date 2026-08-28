@@ -355,7 +355,13 @@ async def query_endpoint(
         raise HTTPException(status_code=500, detail="Query failed")
 
 
-@app.post("/api/query_async", response_model=QueryResponse)
+# deprecated=True, not a removal: /api/query/async has served the same behaviour
+# since 2025-07 and this name arrived in 2025-09, so the newer duplicate is the
+# one to mark. The flag reaches the OpenAPI schema and nothing else — no caller
+# breaks, and the maintainer can move the mark to the other route with one word
+# if the answer to DEAD-4 is that the service layer should own the request path.
+# See BEY-2 in AUDIT.md.
+@app.post("/api/query_async", response_model=QueryResponse, deprecated=True)
 async def query_async_endpoint(
     request: QueryRequestModel,
     api_service: Annotated[APIService, Depends(get_api_service)],

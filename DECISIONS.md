@@ -39,6 +39,26 @@ an empty answer now get an exception. Done anyway, in the fork, with the reason
 recorded — the previous return value was not a weaker answer, it was a wrong
 one.
 
+## 2026-08-28 — The duplicate async route is marked, which is not the same as answering BEY-2
+
+The row asked which of two identical routes is supported and stopped there,
+because removing either breaks callers and there is no deprecation policy to
+remove it under. Both halves of that are still true; what was wrong is treating
+the question and the signal as one thing. `deprecated=True` removes nothing,
+breaks nobody, appears in the OpenAPI schema where a caller will see it, and is
+undone by deleting a word.
+
+It goes on `/api/query_async` because that name arrived in 2025-09 and
+`/api/query/async` has served the same behaviour since 2025-07: the longer-lived
+public name is the one left unqualified. That is a fact about this repository's
+history rather than a preference.
+
+It deliberately does not answer DEAD-4. The marked route is the one that goes
+through `APIService`, and whether that layer should own the request path is a
+separate open question; if it is answered the other way, the mark moves in one
+word. A signal that cheap to reverse is not a decision taken on the maintainer's
+behalf.
+
 ## 2026-08-28 — Superseding two numbers in the 2026-08-27 scoring entry
 
 The entry below, "The audit's own scoring model, transcribed and calibrated",
