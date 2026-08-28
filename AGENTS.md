@@ -58,11 +58,31 @@ Which check a change needs:
 | `packages/core/`, `verbatim_rag/`, `api/`, `tests/` | `make check` | Same paths CI lints |
 | `pyproject.toml` dependencies | `make lock`, then `make check` | Regenerates `dev-constraints.txt`; uv keeps existing pins and will not raise versions on its own |
 | `docker/`, `Dockerfile`, `docker-compose.yml` | `docker compose up --build`, then `curl -fsS "localhost:${FRONTEND_PORT:-8080}/api/status"` | See `docker/overrides.txt` before regenerating the container lock, and note it needs `--no-emit-package verbatim-core` |
-| `frontend/` | `npm ci && npm run build` | Needs Node ≥ 20.19; if the local Node is older, build through `frontend/Dockerfile` (`node:20-alpine`) |
+| `frontend/` | `npm ci && npm run lint && npm test && npm run build` | The order CI runs them in. Needs Node ≥ 20.19; if the local toolchain is older or its `node_modules` were installed for another platform, run the same line in a container: `docker run --rm -v "$PWD/frontend":/app -w /app node:20-alpine sh -c '…'` |
 | `docs/`, `mkdocs.yml` | `mkdocs build --strict` | Not installed locally by default; CI runs it |
 | `.github/workflows/` | Opening a pull request against `main` | Both workflows filter on `branches: [main]`, so nothing on a branch is checked until a PR exists. The docs *deploy* job runs only on push to `main` and cannot be exercised from a PR — say so rather than claiming it was verified |
 
 Type checking is deliberately absent from `make check`; see `DECISIONS.md`.
+
+## Rolling back
+
+Four things here undo differently, and one of them does not undo at all.
+
+- **A commit.** `git revert <sha>`, not a rewrite: the branch is pushed and a
+  pull request is open against it, so history someone may have fetched stays as
+  it was. A revert passes `make check` like any other change or it does not land.
+- **The container stack.** `docker compose down` removes the containers and
+  keeps the `milvus_data` volume, so the index survives. To go back to an earlier
+  build, check that commit out and `docker compose up -d --build`: the images are
+  built from the tree rather than pulled, so the tree *is* the version.
+- **The pin sets.** `git checkout <sha> -- dev-constraints.txt docker/constraints.txt`
+  and rebuild. `make lock` regenerates from `pyproject.toml` and keeps pins that
+  already satisfy it, so it will not quietly walk one back on its own.
+- **The index does not roll back.** `api/ingest.py` only adds; there is no delete
+  path, and Milvus Lite takes a single writer, so nothing can edit `/data/index.db`
+  while the API holds it. The only undo is `docker compose down -v`, which
+  destroys the whole index rather than the last ingest. Index a corpus you can
+  afford to lose, or copy the volume before you start.
 
 ## Boundaries
 
@@ -118,7 +138,7 @@ None of it is proposed upstream. This branch is never merged.
 
 ## Recording work
 
-Two files, kept distinct:
+Three files, kept distinct:
 
 - [`AUDIT.md`](AUDIT.md) — register of external audit findings. One row each,
   with a status, and for anything closed, **how** and **why that way**.
@@ -130,5 +150,5 @@ Two files, kept distinct:
   `PUBLIC_ROADMAP.md`. Read it before a product-shaped task; it is a compilation,
   so where it and its sources disagree, the sources win.
 
-Update both in the same commit as the change they describe, not afterwards. If
+Update them in the same commit as the change they describe, not afterwards. If
 work stops halfway, the register still has to be true.

@@ -1,0 +1,9 @@
+# The AI-readiness report lists a missing CODEOWNERS under "process context":
+# an agent or a contributor cannot tell who reviews what. On a fork with one
+# owner the honest answer is short — everything is mine — and stating it is
+# still worth more than leaving the question open, because it is the file the
+# question is asked in.
+#
+# Upstream (KRLabsOrg/verbatim-rag) has its own maintainers and is unaffected:
+# this file governs review in this fork only.
+* @FrostWillmott

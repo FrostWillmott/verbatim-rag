@@ -13,6 +13,41 @@ usually rejected for reasons visible only at the time. A row that says only
 This file tracks what happens to each finding. `DECISIONS.md` carries the longer
 reasoning behind the non-obvious calls; rows here link to it rather than repeat it.
 
+## Status
+
+| | |
+|---|---:|
+| Findings | **68** — 52 from the reports, 16 found by this work |
+| `done` | **58** |
+| `rejected`, with the argument in the row | 6 |
+| `question` — cannot be closed without the maintainer | 3 |
+| `n/a` | 1 |
+
+Tests 97 → 185, plus 7 UI tests where there was no framework. Project coverage
+19% → 40.93%, with a CI floor that fails below 35. `npm audit` 13 findings, 10
+high → 0. CI green across nine jobs on `f66fa8a`, including both container image
+builds and the frontend suite.
+
+**The four findings worth reading first, none of which are in the ten reports:**
+
+- [`BEY-12`](#beyond-the-audit) — a provider that cannot answer was reported to
+  the user as a corpus with nothing to say: `200 OK` and "no relevant
+  information found in the provided documents", after retrieval had already
+  returned the chunk containing the answer.
+- [`BEY-9`](#beyond-the-audit) — the shipped indexer writes to a collection the
+  shipped API does not read, and both failure modes are silent because the two
+  embedding models happen to agree on 384 dimensions.
+- [`BEY-14`](#beyond-the-audit) — a deleted image stayed invisible because the
+  SPA fallback answered `200 text/html` for it, so "no 404s in the console" was
+  true and meaningless.
+- [`BEY-13`](#beyond-the-audit) — the selection state survived the query it
+  belonged to, because the identifier is a position in the citation array rather
+  than an identity.
+
+Nine of the ten reports' scoring formulas are reproduced exactly from their own
+inputs, and the tenth is shown not to be — see [Reconstructed scoring
+model](#reconstructed-scoring-model).
+
 ## Premise
 
 The reports were produced against `anastasiakrivova-stack/verbatim-rag`, a fork
@@ -132,7 +167,7 @@ suppression, not invention.
 |---|---|---|---|---|
 | TST-1 | The RAG happy path (`verbatim_rag`) has no tests at all | — | `done` | **How:** `tests/test_rag_pipeline.py` runs documents in and a cited answer out, against doubles for the index, the span extractor and the LLM client — all three are constructor arguments of `VerbatimRAG`, so nothing is patched. Ten tests: ingestion reaches the index, the answer quotes the source verbatim, every citation's text is present in the document it points at, every highlight's offsets slice to its own text, `k` is honoured, and a question the corpus cannot answer yields no citations. **Checked for vacuity:** making the fake extractor return invented text fails exactly three of them — the verbatim, citation and offset assertions — so they exercise `_verify_spans` and the response builder rather than the doubles. **Coverage:** `verbatim_rag/core.py` 20% → 48%, `schema_adapter.py` 0% → 100%, project-wide 36% → 39%. The modest total is honest: the remaining mass is Milvus adapters, and testing those to move a number is what `testing.md` calls worthless. |
 | TST-2 | No contract tests for the FastAPI surface | — | `done` | **How:** `tests/test_api_contract.py`, 22 tests through the real `APIService` against doubles for the RAG and template seams — no Milvus, no LLM key. They cover the routes, the settings that must take effect, the request bounds, the LLM-key reporting and the streaming path's shared state. `api/` coverage went from 0% to 62%. **Why doubles rather than a live stack:** the seams are constructor arguments and FastAPI dependencies, so nothing is patched; a suite needing Milvus would not run in CI, which is where it has to run. |
-| TST-3 | No coverage target; coverage measured ad hoc for core only | — | `done` | **How:** coverage configured in `pyproject.toml` over all three packages with `fail_under = 35`, wired into CI and into `make test`. **Why 35 and not a round 70:** the floor exists to stop coverage sliding back, not to look respectable. The suite reaches 40.93%; a target nobody can meet gets disabled within a month, and one nobody can miss measures nothing. Raising it is a decision to take when the next surface is covered, not a wish to pin now. **And it does something.** Proven, not asserted: deselect the full-stack tests and coverage falls to 32.19%, so the gate fails. It is the safeguard against those tests silently ceasing to run. **Found while doing this:** the earlier work had **broken CI** without anyone noticing, because nothing has been pushed. The matrix installs `verbatim-core` only, so the new RAG and API tests failed at *collection* — a marker alone does not help, `-m` filters after collection. `tests/conftest.py` now skips those files when the root package is absent, the matrix runs `-m "not requires_full_stack"`, and a separate `test-full` job installs the root and runs everything. Verified by rebuilding CI's exact environment locally: 112 pass there, 182 with the full stack. |
+| TST-3 | No coverage target; coverage measured ad hoc for core only | — | `done` | **How:** coverage configured in `pyproject.toml` over all three packages with `fail_under = 35`, wired into CI and into `make test`. **Why 35 and not a round 70:** the floor exists to stop coverage sliding back, not to look respectable. The suite reaches 40.93%; a target nobody can meet gets disabled within a month, and one nobody can miss measures nothing. Raising it is a decision to take when the next surface is covered, not a wish to pin now. **And it does something.** Proven, not asserted: deselect the full-stack tests and coverage falls to 32.19%, so the gate fails. It is the safeguard against those tests silently ceasing to run. **Found while doing this:** the earlier work had **broken CI** without anyone noticing, because nothing had been pushed yet. The matrix installs `verbatim-core` only, so the new RAG and API tests failed at *collection* — a marker alone does not help, `-m` filters after collection. `tests/conftest.py` now skips those files when the root package is absent, the matrix runs `-m "not requires_full_stack"`, and a separate `test-full` job installs the root and runs everything. Verified by rebuilding CI's exact environment locally: 112 pass there, 185 with the full stack. |
 | TST-4 | No frontend test framework at all | — | `done` | **Deferred twice before this, and the second deferral is the one that did not survive.** The first said the components worth testing were about to be deleted; the deletion happened and the argument went with it. The second said time, and that was true until three passes in a row — two manual, one outside evaluation — kept returning the same ranked list of what to specify. A queue that keeps producing the same three items is not waiting on judgement any more. **How:** Vitest with Testing Library and jsdom, configured inside the existing `vite.config.js` rather than a second config file — a `vitest.config.js` would have to repeat the jsx loader rules and the `@` alias and would drift from them. `npm test` runs it, CI runs it between the lint and the build, and `CONTRIBUTING.md` prints it. **What it covers, in the order the manual passes ranked it:** a citation leads to its own source — the product's central claim, and until now the only thing nothing tested; a new question leaving no trace of the previous selection (`BEY-13`); and keyboard activation doing what a click does while leaving focus where the user put it (`BEY-15`). Seven tests, driven through the real `ApiContext` with a harness that swaps the answer, so submitting the form runs the component's own handler rather than a mock of it. **Non-vacuity, measured three ways rather than asserted.** Against the component as it stood before those two fixes (`1195daa`), exactly the two regression tests fail and the other five pass. Against a mutant that makes the citation lookup always return the first fact, five of seven fail. And the mutant found a real defect in the tests themselves on the first run: a test named "follows the citation that was clicked, not the first one" clicked the first one, so it survived the mutant; it now clicks two citations in one test and asserts the mark moves. **What is deliberately not covered:** everything outside `CleanFactInterface` — the context provider's streaming parser, the error surfaces, the document panel's own controls. This is the critical path plus the two defects a person had to find twice, not a suite. `CONTRIBUTING.md` says so where it used to say there was no framework at all. |
 | TST-5 | No fake-provider harness; test layers not separated | — | `done` | **How:** `tests/fakes.py` holds `FakeIndex`, `FakeSpanExtractor` and `FakeLLMClient`, reusable by any future test of the pipeline. `FakeSpanExtractor` deliberately returns text that really occurs in the document it was given, because the pipeline drops spans that fail verification and a double returning invented text would let a broken pipeline pass. **Not done, deliberately:** the `tests/unit` / `tests/integration` / `tests/e2e` split the report suggests. This repository keeps a flat `tests/` directory and imposing a new layout on inherited tests is the kind of unasked-for restructuring this branch has refused elsewhere. |
 
@@ -165,7 +200,7 @@ suppression, not invention.
 | AIR-1 | No `AGENTS.md` or equivalent cross-agent entry point | high | `done` | **How:** `AGENTS.md` at the root — 99 lines covering what the repository is, a reading order, the surfaces and their stability, the verification matrix, the boundaries, and where decisions are recorded. **Why this way:** vendor-neutral, naming no assistant. Answering "there is no cross-agent entry point" with a directory named after one vendor would have missed the finding. Every link in it was checked to resolve. |
 | AIR-2 | No one-command verification matrix per surface | high | `done` | **How:** `make check` runs the CI gate locally, and `AGENTS.md` carries the per-surface table: changed path → command → caveat. **Why this way:** the caveats are the useful part, so they are in the table rather than omitted — the frontend needs Node ≥ 20.19, mkdocs is not installed locally, and the docs deploy job cannot be exercised from a pull request at all. A matrix that implies everything is checkable would be worse than none. |
 | AIR-3 | `/api/load-resources` and the env contract are out of sync | medium | `done` | **How:** the `loadResources` helper is deleted from `ApiContext.js` along with its entry in the context value. It posted to a route `api/app.py` does not define, and nothing called it — dead code pointing at a dead endpoint. **Not** by adding the route: no consumer wanted it, and inventing an endpoint to justify an unused caller is the wrong direction. |
-| AIR-4 | No durable planning memory or handoff format | medium | `done` | **How:** two files with separate jobs — this register for what happens to each finding, `DECISIONS.md` for why non-obvious choices were made — plus the rule in `AGENTS.md` that both are updated in the same commit as the change. **Why this way:** the failure mode is a register that lies after work stops halfway, so the convention is written down rather than left to habit. Not a full ADR process; that would be over-engineering for a fork. |
+| AIR-4 | No durable planning memory or handoff format | medium | `done` | **How:** two files with separate jobs — this register for what happens to each finding, `DECISIONS.md` for why non-obvious choices were made — plus the rule in `AGENTS.md` that both are updated in the same commit as the change. **Why this way:** the failure mode is a register that lies after work stops halfway, so the convention is written down rather than left to habit. Not a full ADR process; that would be over-engineering for a fork. **Two more items from the same sentence of the report, closed later:** the criterion this finding sits under names "CODEOWNERS, rollback-руководства, правила handoff и durable-реестра задач" in one breath, and only the last two became recommendations. The other two are closed now — `.github/CODEOWNERS`, which on a single-owner fork says something short and true rather than leaving the question open, and a **Rolling back** section in `AGENTS.md`. **The rollback section is not boilerplate:** it separates what undoes cleanly (a commit, the container stack, the pin sets) from the one thing that does not — the index only grows, `api/ingest.py` has no delete path, Milvus Lite admits a single writer, and the only undo is `docker compose down -v`, which destroys the whole index rather than the last ingest. That is a fact this branch learned by running the stack, not by reading it. |
 | AIR-5 | No product workflow and terminology map | medium | `done` | **This was `rejected`, and the refusal answered a question the report did not ask.** The rejection said that writing a product map for someone else's project invents intent. The report's own remediation line says the opposite of what that refuses: *«Переиспользовать концепт из README и roadmap без новых обязательств»* — reuse the concept already in the README and the roadmap, taking on no new commitments. Compiling existing material is not inventing intent, and this branch had already compiled `AGENTS.md` and `DECISIONS.md` the same way. The refusal picked the hardest reading and answered that. **How:** `PRODUCT-MAP.md`, one page, every section naming the file it was compiled from — the guarantee and its edge, the vocabulary a reader can confuse (span vs citation vs highlight, document vs chunk, `verbatim-core` vs `verbatim-rag`), the three workflows that actually exist, the non-goals in the roadmap's own words, what the roadmap counts as progress, and what a good answer looks like including the two failure shapes this branch changed (`BEY-8`, `BEY-12`). Linked from `README.md` and from `AGENTS.md`, which is the agent entry point the report was measuring. **What is not in it, and why that is not a second refusal:** the acceptance criteria also list personas/roles and per-persona success metrics. Those exist nowhere in the repository, so they cannot be compiled — only invented — and the page says so in a section of its own rather than leaving a reader to notice the gap. That is the part of this finding the fork genuinely cannot close, separated from the part it can. |
 
 ## Codebase hygiene — 71/100
@@ -188,10 +223,11 @@ Found while verifying the reports against the tree, while writing the first API
 test, and by a human working through `MANUAL-UI-CHECK.md` against the running
 stack — twice, because the first pass hit an empty index and the second one, run
 against a populated one, reached the four steps the first could not. `BEY-12`
-came from between the two, while putting a working key into the stack. None of
-these appear in any of the ten documents.
+came from between the two, while putting a working key into the stack, and
+`BEY-16` from re-reading the second report afterwards rather than from the run
+itself. None of these appear in any of the ten documents.
 
-That the manual pass returned five is worth stating plainly, because it is an
+That the first pass returned five is worth stating plainly, because it is an
 argument about method rather than about this project: four of the five are
 invisible to every static check on this branch. Two of them are agreements
 between two halves of the system that no single file is wrong about; the third
@@ -223,9 +259,9 @@ about.
 
 The branch is pushed and open as a draft pull request against `main`, which is
 the only way anything here reaches CI: both workflows filter on
-`branches: [main]`. All three workflows are green on `be688a9` — `CI` across nine
-jobs, `Docs`, and `rights-check` — and the `frontend` job on that run executed
-`npm ci`, `npm run lint`, `npm test` and `npm run build` in order.
+`branches: [main]`. All three workflows are green on `f66fa8a` and on `be688a9` before it — `CI`
+across nine jobs, `Docs`, and `rights-check` — and the `frontend` job on both
+runs executed `npm ci`, `npm run lint`, `npm test` and `npm run build` in order.
 
 **The commit is named because for most of a day it could not have been.** An
 outside evaluation found this section claiming green while the last run on the
