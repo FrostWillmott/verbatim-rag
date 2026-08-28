@@ -32,6 +32,25 @@ class _NormalizedTokenText:
     normalized_token_offsets: List[tuple[int, int]]
 
 
+class SpanExtractionUnavailable(RuntimeError):
+    """No extraction call succeeded for a query.
+
+    Separates "the model was asked and found nothing" from "the model could not
+    be asked". Both used to reduce to an empty span list, and an empty span list
+    is rendered as a statement about the documents — so an unusable key or an
+    unreachable model told the user their corpus had no answer. A failure that
+    left even one document extracted is not this: it is logged per document, as
+    before, and the answer is built from what did come back.
+    """
+
+
+def _raise_if_nothing_could_be_extracted(failures: List[Exception], total: int) -> None:
+    if total and len(failures) == total:
+        raise SpanExtractionUnavailable(
+            f"span extraction failed for all {total} document(s): {failures[0]}"
+        ) from failures[0]
+
+
 class SpanExtractor(ABC):
     """Abstract base class for span extractors."""
 
@@ -598,6 +617,7 @@ class LLMSpanExtractor(SpanExtractor):
         logger.info("Extracting spans (batch mode)...")
 
         all_verified: Dict[str, List[str]] = {}
+        failures: List[Exception] = []
 
         for batch_start in range(0, len(search_results), self.batch_size):
             batch = search_results[batch_start : batch_start + self.batch_size]
@@ -655,7 +675,9 @@ class LLMSpanExtractor(SpanExtractor):
                     except Exception as inner_e:
                         logger.error("Individual fallback extraction failed: %s", inner_e)
                         all_verified[result_text] = []
+                        failures.append(inner_e)
 
+        _raise_if_nothing_could_be_extracted(failures, len(search_results))
         return all_verified
 
     async def _extract_spans_batch_async(
@@ -669,6 +691,7 @@ class LLMSpanExtractor(SpanExtractor):
         logger.info("Extracting spans (async batch mode)...")
 
         all_verified: Dict[str, List[str]] = {}
+        failures: List[Exception] = []
 
         for batch_start in range(0, len(search_results), self.batch_size):
             batch = search_results[batch_start : batch_start + self.batch_size]
@@ -723,7 +746,9 @@ class LLMSpanExtractor(SpanExtractor):
                     except Exception as inner_e:
                         logger.error("Async individual fallback extraction failed: %s", inner_e)
                         all_verified[result_text] = []
+                        failures.append(inner_e)
 
+        _raise_if_nothing_could_be_extracted(failures, len(search_results))
         return all_verified
 
     def _extract_spans_individual(
@@ -738,6 +763,7 @@ class LLMSpanExtractor(SpanExtractor):
         """
         logger.info("Extracting spans (individual mode)...")
         all_spans = {}
+        failures: List[Exception] = []
 
         for result in search_results:
             result_text = getattr(result, "text", "")
@@ -756,7 +782,9 @@ class LLMSpanExtractor(SpanExtractor):
             except Exception as e:
                 logger.error("Individual extraction failed for document: %s", e)
                 all_spans[result_text] = []
+                failures.append(e)
 
+        _raise_if_nothing_could_be_extracted(failures, len(search_results))
         return all_spans
 
     async def _extract_spans_individual_async(
@@ -768,6 +796,8 @@ class LLMSpanExtractor(SpanExtractor):
         import asyncio
 
         logger.info("Extracting spans (async individual mode)...")
+
+        failures: List[Exception] = []
 
         async def _extract_one(result: Any) -> tuple[str, List[str]]:
             result_text = getattr(result, "text", "")
@@ -786,9 +816,11 @@ class LLMSpanExtractor(SpanExtractor):
                 return result_text, self._verify_spans(extracted, result_text)
             except Exception as e:
                 logger.error("Async individual extraction failed for document: %s", e)
+                failures.append(e)
                 return result_text, []
 
         results = await asyncio.gather(*[_extract_one(r) for r in search_results])
+        _raise_if_nothing_could_be_extracted(failures, len(search_results))
         return dict(results)
 
     def _verify_spans(self, spans: List[str], document_text: str) -> List[str]:

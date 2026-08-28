@@ -4,9 +4,15 @@ import importlib
 import logging
 import sys
 import types
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
-from verbatim_core.extractors import LLMSpanExtractor, ModelSpanExtractor
+import pytest
+
+from verbatim_core.extractors import (
+    LLMSpanExtractor,
+    ModelSpanExtractor,
+    SpanExtractionUnavailable,
+)
 
 
 class TestModelSpanExtractorWarnings:
@@ -211,3 +217,67 @@ class TestExtractSpans:
 
         result = extractor.extract_spans("Q?", [result_obj])
         assert result["Text with fallback span."] == ["fallback span"]
+
+
+def _result(text: str):
+    result = MagicMock()
+    result.text = text
+    return result
+
+
+class TestExtractionUnavailableIsNotAnEmptyCorpus:
+    """A provider that cannot answer must not read as documents with nothing in them.
+
+    Every failure used to become an empty span list, and an empty span list is
+    rendered as "no relevant information found in the provided documents" — a
+    claim about the corpus, made when the corpus was never examined.
+    """
+
+    def test_a_model_that_finds_nothing_still_returns_normally(self):
+        client = MagicMock()
+        client.extract_spans.return_value = {"doc_0": []}
+        extractor = LLMSpanExtractor(llm_client=client, extraction_mode="batch")
+
+        result = extractor.extract_spans("Q?", [_result("Text about something else.")])
+
+        assert result == {"Text about something else.": []}
+
+    def test_batch_mode_raises_when_no_document_could_be_extracted(self):
+        client = MagicMock()
+        client.extract_spans.side_effect = Exception("401 Invalid API Key")
+        client.extract_relevant_spans.side_effect = Exception("401 Invalid API Key")
+        extractor = LLMSpanExtractor(llm_client=client, extraction_mode="batch")
+
+        with pytest.raises(SpanExtractionUnavailable, match="401 Invalid API Key"):
+            extractor.extract_spans("Q?", [_result("A."), _result("B.")])
+
+    def test_individual_mode_raises_when_no_document_could_be_extracted(self):
+        client = MagicMock()
+        client.extract_relevant_spans.side_effect = Exception("404 model_not_found")
+        extractor = LLMSpanExtractor(llm_client=client, extraction_mode="individual")
+
+        with pytest.raises(SpanExtractionUnavailable, match="404 model_not_found"):
+            extractor.extract_spans("Q?", [_result("A."), _result("B.")])
+
+    def test_one_document_extracted_is_enough_to_answer(self):
+        """Partial failure keeps its old behaviour: log it, answer with what came back."""
+        client = MagicMock()
+        client.extract_relevant_spans.side_effect = [
+            ["The cat"],
+            Exception("429 rate limited"),
+        ]
+        extractor = LLMSpanExtractor(llm_client=client, extraction_mode="individual")
+
+        result = extractor.extract_spans("Q?", [_result("The cat sat."), _result("B.")])
+
+        assert result == {"The cat sat.": ["The cat"], "B.": []}
+
+    async def test_the_async_paths_raise_too(self):
+        client = MagicMock()
+        client.extract_spans_async = AsyncMock(side_effect=Exception("503 upstream"))
+        client.extract_relevant_spans_async = AsyncMock(side_effect=Exception("503 upstream"))
+        client.complete_async = AsyncMock(side_effect=Exception("503 upstream"))
+        extractor = LLMSpanExtractor(llm_client=client, extraction_mode="batch")
+
+        with pytest.raises(SpanExtractionUnavailable, match="503 upstream"):
+            await extractor.extract_spans_async("Q?", [_result("A.")])

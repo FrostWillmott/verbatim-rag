@@ -437,3 +437,32 @@ class TestLlmProviderComesFromSettings:
             "model": "qwen/qwen3.8-27b",
             "api_base": "https://api.openai.com/v1",
         }
+
+
+class TestAProviderFailureIsNotAnEmptyCorpus:
+    """BEY-12: the routes answered 200 with "no relevant information found" when
+    the extraction model could not be reached at all. A question the system was
+    unable to work on is not a question with no answer in the documents.
+    """
+
+    def test_query_reports_the_failure_instead_of_an_empty_answer(self, api_client, fake_rag):
+        from verbatim_rag.extractors import SpanExtractionUnavailable
+
+        fake_rag.query.side_effect = SpanExtractionUnavailable(
+            "span extraction failed for all 3 document(s): 404 model_not_found"
+        )
+
+        response = api_client.post("/api/query", json={"question": "What is X?"})
+
+        assert response.status_code == 503
+        assert "404 model_not_found" in response.json()["detail"]
+
+    def test_the_async_route_reports_it_too(self, api_client, fake_rag):
+        from verbatim_rag.extractors import SpanExtractionUnavailable
+
+        fake_rag.query_async.side_effect = SpanExtractionUnavailable("401 Invalid API Key")
+
+        response = api_client.post("/api/query_async", json={"question": "What is X?"})
+
+        assert response.status_code == 503
+        assert "401 Invalid API Key" in response.json()["detail"]

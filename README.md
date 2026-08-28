@@ -209,8 +209,10 @@ deployment (no TLS, authentication, tenancy, or scaling).
   (the stack uses the optional `env_file` syntax)
 - An OpenAI-compatible API key. The stack defaults to Groq; `LLM_API_BASE` and
   `LLM_MODEL` point it elsewhere. Check that your key can reach the default
-  model — an inaccessible model answers every question with "no relevant
-  information found" rather than an error.
+  model: not every Groq account can. A model that cannot be reached now fails
+  the query with `503` and the provider's own message, rather than answering
+  "no relevant information found" — which is a claim about your documents and
+  was the wrong thing to say.
 
 ### Build and start
 
@@ -236,7 +238,10 @@ for the API to report healthy.
 The API key is not validated at startup: a missing or empty `OPENAI_API_KEY`
 still brings the stack up healthy. It is reported rather than left to surprise
 you on the first query — the API logs a warning as it starts, and `/api/status`
-returns `llm_configured: false`.
+returns `llm_configured: false`. A key that is present but unusable can only be
+found out by asking: the first query then returns `503` with what the provider
+said, because a system that could not consult your documents must not report
+that they hold nothing.
 
 ### Putting documents in the index
 

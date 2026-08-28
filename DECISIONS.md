@@ -17,6 +17,28 @@ software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-28 — An extraction failure stops being an answer about the documents
+
+`extractors.py` caught every exception, logged it, and returned an empty span
+list for that document. The response builder renders an empty result as "no
+relevant information found in the provided documents" — so an unusable key or a
+model the account cannot reach told the user their corpus had no answer, with a
+`200` and a green status behind it. In a product whose claim is provenance, that
+is the worst available shape for a failure: not a missing answer, a false one.
+
+`SpanExtractionUnavailable` is raised when *every* document's extraction failed,
+and only then. Partial failure keeps its old behaviour, because one chunk lost
+to a rate limit should not blank an answer the rest still ground — and drawing
+the line at total failure means the change can only speak where the old code was
+silent, never break a case that worked. The API answers `503`, not `500`: the
+request was valid and the condition is usually temporary. The provider's own
+message is passed through, because it names the cause and holds no secret.
+
+This changes the failure contract of a published package: callers who relied on
+an empty answer now get an exception. Done anyway, in the fork, with the reason
+recorded — the previous return value was not a weaker answer, it was a wrong
+one.
+
 ## 2026-08-28 — Two calls from the second UI pass: reconcile instead of refocus, 404 instead of fallback
 
 The keyboard losing focus when a citation is activated looked like a missing

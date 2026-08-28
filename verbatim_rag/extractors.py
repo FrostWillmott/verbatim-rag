@@ -8,10 +8,12 @@ from verbatim_core.extractors import (
     LLMSpanExtractor,
     ModelSpanExtractor,
     SemanticHighlightExtractor,
+    SpanExtractionUnavailable,
     SpanExtractor,
 )
 
 __all__ = [
+    "SpanExtractionUnavailable",
     "SpanExtractor",
     "ModelSpanExtractor",
     "LLMSpanExtractor",

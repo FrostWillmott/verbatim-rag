@@ -22,6 +22,7 @@ try:
         TemplateManager,
         VerbatimRAG,
     )
+    from verbatim_rag.extractors import SpanExtractionUnavailable
 except ImportError as e:
     print(f"Error importing verbatim_rag: {e}")
     sys.exit(1)
@@ -36,6 +37,18 @@ from api.dependencies import (
 from api.services.rag_service import APIService
 
 logger = logging.getLogger(__name__)
+
+
+def _extraction_unavailable(exc: Exception) -> HTTPException:
+    """503 for "the model could not be asked", which is not "the corpus has nothing".
+
+    The provider's own message is passed through rather than swallowed: it names
+    the cause — an unusable key, a model this account cannot reach — and the
+    alternative is what these routes used to answer, which was a confident
+    "no relevant information found in the provided documents" with a 200.
+    """
+    logger.error("Span extraction unavailable: %s", exc)
+    return HTTPException(status_code=503, detail=f"Span extraction is unavailable: {exc}")
 
 
 def llm_key_is_configured() -> bool:
@@ -329,6 +342,8 @@ async def query_endpoint(
         return response
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except SpanExtractionUnavailable as e:
+        raise _extraction_unavailable(e)
     except Exception as e:
         logger.error(f"Query failed: {e}")
         raise HTTPException(status_code=500, detail="Query failed")
@@ -352,6 +367,8 @@ async def query_async_endpoint(
             search_params=request.search_params,
         )
         return response
+    except SpanExtractionUnavailable as e:
+        raise _extraction_unavailable(e)
     except Exception as e:
         logger.error(f"Async query failed: {e}")
         raise HTTPException(status_code=500, detail="Async query failed")
@@ -375,6 +392,8 @@ async def verbatim_transform_endpoint(request: VerbatimTransformRequest):
         return resp
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except SpanExtractionUnavailable as e:
+        raise _extraction_unavailable(e)
     except Exception as e:
         logger.error(f"Verbatim transform failed: {e}")
         raise HTTPException(status_code=500, detail="Verbatim transform failed")
@@ -413,6 +432,8 @@ async def query_async_slash_endpoint(
 
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except SpanExtractionUnavailable as e:
+        raise _extraction_unavailable(e)
     except Exception as e:
         logger.error(f"Async query failed: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
