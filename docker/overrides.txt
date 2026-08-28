@@ -56,4 +56,16 @@ milvus-lite<3
 # "3.12" and so left the base image's older setuptools in place on 3.11;
 # torch 2.13.0 requires setuptools>=77.0.3 unconditionally and pulls in 83.x.
 # 80.x satisfies torch and still ships pkg_resources.
+#
+# What retires this pin, since a calendar date on it would only say when someone
+# promised to look: milvus-lite dropping the pkg_resources import. Both pins go
+# together — `milvus-lite<3` above is the reason this one exists — so the check
+# is a single command against the unpinned pair:
+#
+#   pip install -q "milvus-lite>=3" "setuptools>=81" &&
+#     python -c "import milvus_lite; print(milvus_lite.__version__)"
+#
+# If that imports cleanly, re-test the metadata collection from
+# milvus_local.py before removing either line: the schema regression documented
+# above is the other half, and it is not fixed by the import working.
 setuptools<81

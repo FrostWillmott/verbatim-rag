@@ -92,6 +92,11 @@ Dependencies: only `openai`, `pydantic`, `rapidfuzz`, and `jinja2`.
 
 ## Repository map
 
+For the vocabulary, the workflows and the boundaries in one page, see
+[`PRODUCT-MAP.md`](PRODUCT-MAP.md) — compiled from this file and the roadmap,
+adding nothing to them.
+
+
 | Surface | Location | Responsibility |
 |---|---|---|
 | `verbatim-core` | This repository, `packages/core/` | Reusable question + context → evidence transform, validation, templates, citations |

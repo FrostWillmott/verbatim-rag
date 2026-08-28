@@ -117,6 +117,10 @@ Two files, kept distinct:
 - [`DECISIONS.md`](DECISIONS.md) — append-only log of non-obvious project
   decisions, newest first. Project decisions only; how your own tooling was set
   up belongs in a commit message.
+- [`PRODUCT-MAP.md`](PRODUCT-MAP.md) — the project's own vocabulary, workflows,
+  non-goals and success signals on one page, compiled from `README.md` and
+  `PUBLIC_ROADMAP.md`. Read it before a product-shaped task; it is a compilation,
+  so where it and its sources disagree, the sources win.
 
 Update both in the same commit as the change they describe, not afterwards. If
 work stops halfway, the register still has to be true.

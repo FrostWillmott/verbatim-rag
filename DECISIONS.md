@@ -39,6 +39,22 @@ an empty answer now get an exception. Done anyway, in the fork, with the reason
 recorded — the previous return value was not a weaker answer, it was a wrong
 one.
 
+## 2026-08-28 — A refusal reversed: the product map was a compilation, not an invention
+
+`AIR-5` was rejected on the grounds that writing a product map for someone
+else's project invents intent. The report had asked for the opposite — reuse
+what `README.md` and `PUBLIC_ROADMAP.md` already say, with no new commitments —
+and this branch had already compiled `AGENTS.md` and `DECISIONS.md` that way.
+The refusal answered the hardest available reading of the task, which is the
+failure mode a refusal is most likely to hide in.
+
+`PRODUCT-MAP.md` is therefore a compilation with its sources named per section,
+and it draws the line the refusal should have drawn in the first place:
+workflows, vocabulary, non-goals and success signals exist in the repository and
+are compiled; personas and per-persona metrics do not exist anywhere and are
+named as a gap rather than filled. A fork has no authority to invent product
+intent and then cite it back as if it had been recorded.
+
 ## 2026-08-28 — Two calls from the second UI pass: reconcile instead of refocus, 404 instead of fallback
 
 The keyboard losing focus when a citation is activated looked like a missing
