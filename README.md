@@ -235,6 +235,39 @@ still brings the stack up healthy. It is reported rather than left to surprise
 you on the first query — the API logs a warning as it starts, and `/api/status`
 returns `llm_configured: false`.
 
+### Putting documents in the index
+
+The stack starts with an **empty index**, so out of the box every question
+answers "No relevant information found in the provided documents." `/api/status`
+says so — `document_count: 0`, and the header shows "No documents indexed"
+rather than a green "Ready".
+
+Note that `verbatim-rag index` does **not** fill this index. It writes to a
+different collection with a different embedding model, and because both models
+emit 384-dimension vectors nothing raises — the result simply looks empty. Use
+the API's own entry point, which builds the index through the same factory the
+API reads it with:
+
+```bash
+docker compose stop api          # Milvus Lite allows a single writer
+docker compose run --rm --no-deps --entrypoint python api \
+  -m api.ingest /app/README.md
+docker compose start api
+```
+
+Pass any files or directories that exist inside the container; mount your own
+with `-v /host/path:/corpus` and pass `/corpus`.
+
+Indexing runs on CPU and its cost follows content rather than file count: a
+two-line file took 3 seconds, this project's README just over 17 minutes on an
+arm64 container — with no output in between. A long silent run is working, not
+hung. Confirm the result with:
+
+```bash
+curl -fsS "localhost:${FRONTEND_PORT:-8080}/api/status"     # document_count
+curl -fsS "localhost:${FRONTEND_PORT:-8080}/api/documents"  # what is indexed
+```
+
 ### Logs and status
 
 ```bash

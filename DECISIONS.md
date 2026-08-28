@@ -31,6 +31,21 @@ which is enough to separate empty from populated. `None` stays distinct from
 means "the stack is up", because making it false on an empty index would disable
 the question input for the operator about to fill it.
 
+## 2026-08-27 — The demo gets an ingest path that derives from the API instead of choosing
+
+The configuration mismatch below stands and is still the maintainer's to
+resolve. What changed is that a demo which cannot be demonstrated is a defect of
+this fork's prototype surface, and there is a fix that does not require picking
+a winner: `api/ingest.py` builds its index by calling `get_rag_instance`, the
+same factory the API reads through. Writing the collection name and embedding
+model into a third file would have been the "second mechanism beside a working
+one" error in a new place, and it would drift the first time either value
+changed.
+
+It lives in `api/`, not in the published CLI, so nothing about the library's
+behaviour changes. Milvus Lite's single-writer constraint means the API has to
+be stopped for the run, which is documented rather than worked around.
+
 ## 2026-08-27 — The shipped indexer writes where the shipped API does not read
 
 `verbatim_rag/cli.py` indexes into collection `verbatim_rag` with
