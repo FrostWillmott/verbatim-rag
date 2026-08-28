@@ -207,7 +207,10 @@ deployment (no TLS, authentication, tenancy, or scaling).
 
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose v2.24+
   (the stack uses the optional `env_file` syntax)
-- An OpenAI-compatible API key (Groq by default, see `api/dependencies.py`)
+- An OpenAI-compatible API key. The stack defaults to Groq; `LLM_API_BASE` and
+  `LLM_MODEL` point it elsewhere. Check that your key can reach the default
+  model — an inaccessible model answers every question with "no relevant
+  information found" rather than an error.
 
 ### Build and start
 
@@ -305,7 +308,9 @@ OPENAI_API_KEY=your_key_here docker compose up --build
 
 | Variable | Default | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | (required) | OpenAI-compatible API key |
+| `OPENAI_API_KEY` | (required) | Key for the endpoint below |
+| `LLM_MODEL` | `moonshotai/kimi-k2-instruct-0905` | Model used for span extraction |
+| `LLM_API_BASE` | `https://api.groq.com/openai/v1/` | OpenAI-compatible endpoint |
 | `INDEX_PATH` | `/data/index.db` | Milvus Lite database path in the container |
 | `FRONTEND_PORT` | `8080` | Host port the frontend is published on |
 

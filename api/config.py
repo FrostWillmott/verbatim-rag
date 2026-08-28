@@ -40,6 +40,16 @@ class APIConfig(BaseSettings):
     # API limits
     max_question_length: int = Field(default=1000, validation_alias="MAX_QUESTION_LENGTH")
 
+    # LLM provider. These are the demo's values, not the library's: they were
+    # constants in api/dependencies.py, so pointing the stack at another
+    # OpenAI-compatible endpoint — or at a model the key can actually reach —
+    # meant editing source. The defaults are those constants unchanged, so the
+    # stack behaves identically unless one of them is set.
+    llm_model: str = Field(default="moonshotai/kimi-k2-instruct-0905", validation_alias="LLM_MODEL")
+    llm_api_base: str = Field(
+        default="https://api.groq.com/openai/v1/", validation_alias="LLM_API_BASE"
+    )
+
     # Logging
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 

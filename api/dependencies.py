@@ -48,8 +48,8 @@ def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> Verba
             from verbatim_rag.vector_stores import LocalMilvusStore
 
             llm_client = LLMClient(
-                model="moonshotai/kimi-k2-instruct-0905",
-                api_base="https://api.groq.com/openai/v1/",
+                model=config.llm_model,
+                api_base=config.llm_api_base,
             )
 
             dense_provider = SentenceTransformersProvider(

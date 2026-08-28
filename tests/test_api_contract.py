@@ -363,3 +363,77 @@ class TestQueryEndpoint:
         response = api_client.post("/api/query", json={"question": "   "})
 
         assert response.status_code == 400
+
+
+class TestLlmProviderComesFromSettings:
+    """The model and endpoint were constants in api/dependencies.py, so pointing
+    the demo at another provider — or at a model a given key can actually reach —
+    meant editing source. They are settings now, and the two things worth pinning
+    are that the defaults did not move and that the values are not inert: BEY-6
+    was a whole set of documented variables that reached nothing.
+    """
+
+    def test_defaults_are_the_constants_they_replaced(self):
+        from api.config import APIConfig
+
+        config = APIConfig(_env_file=None)
+
+        assert config.llm_model == "moonshotai/kimi-k2-instruct-0905"
+        assert config.llm_api_base == "https://api.groq.com/openai/v1/"
+
+    def test_the_environment_selects_the_model_and_the_endpoint(self, monkeypatch):
+        from api.config import APIConfig
+
+        monkeypatch.setenv("LLM_MODEL", "qwen/qwen3.8-27b")
+        monkeypatch.setenv("LLM_API_BASE", "https://api.openai.com/v1")
+
+        config = APIConfig(_env_file=None)
+
+        assert config.llm_model == "qwen/qwen3.8-27b"
+        assert config.llm_api_base == "https://api.openai.com/v1"
+
+    def test_the_factory_builds_the_client_from_them(self, monkeypatch, tmp_path):
+        """The assertion that stops a repeat of BEY-6: the settings reach the client."""
+        from api import dependencies
+        from api.config import APIConfig
+        from verbatim_rag import embedding_providers, vector_stores
+        from verbatim_rag import index as index_module
+
+        recorded: dict[str, str] = {}
+
+        class RecordingLLMClient:
+            def __init__(self, model: str, api_base: str):
+                recorded["model"] = model
+                recorded["api_base"] = api_base
+
+        class FakeProvider:
+            def __init__(self, **kwargs):
+                pass
+
+            def get_dimension(self) -> int:
+                return 384
+
+        class FakeRag:
+            def __init__(self, **kwargs):
+                self.template_manager = object()
+
+        monkeypatch.setattr(dependencies, "_rag_instance", None)
+        monkeypatch.setattr(dependencies, "LLMClient", RecordingLLMClient)
+        monkeypatch.setattr(dependencies, "VerbatimRAG", FakeRag)
+        monkeypatch.setattr(embedding_providers, "SentenceTransformersProvider", FakeProvider)
+        monkeypatch.setattr(vector_stores, "LocalMilvusStore", lambda **kwargs: object())
+        monkeypatch.setattr(index_module, "VerbatimIndex", lambda **kwargs: object())
+
+        dependencies.get_rag_instance(
+            APIConfig(
+                _env_file=None,
+                llm_model="qwen/qwen3.8-27b",
+                llm_api_base="https://api.openai.com/v1",
+                templates_path=tmp_path / "absent.json",
+            )
+        )
+
+        assert recorded == {
+            "model": "qwen/qwen3.8-27b",
+            "api_base": "https://api.openai.com/v1",
+        }

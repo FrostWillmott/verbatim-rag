@@ -17,6 +17,27 @@ software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-28 — The model and its endpoint become settings; the choice stays the maintainer's
+
+CFG-4 asks which of the constants in `api/dependencies.py` are deliberate and
+which are settings nobody wired. Two of them stopped being able to wait: the
+pinned model `moonshotai/kimi-k2-instruct-0905` is not reachable from every Groq
+account, and when it is not, every question is answered "no relevant information
+found" with a `200` and a green status (BEY-12). Reaching a model that works
+meant editing source.
+
+So `LLM_MODEL` and `LLM_API_BASE` are fields on `APIConfig` — the settings
+mechanism this API already had, not a new one — with the previous literals as
+defaults, byte for byte. A contract test pins the defaults, and a second one
+pins that the values actually reach `LLMClient`: BEY-6 was a whole set of
+documented variables that reached nothing, and a new setting that is inert is
+worse than no setting.
+
+This deliberately answers nothing about *which* model or endpoint is right, and
+leaves the embedding model and the collection name `"acl"` untouched — they are
+the pair BEY-9 turns on, and moving where the API reads without settling that
+question would orphan an existing index in silence.
+
 ## 2026-08-27 — The status endpoint reports what the index holds, not that it exists
 
 `/api/status` computed readiness as `rag.index is not None`, which is true from
