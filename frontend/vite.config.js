@@ -38,4 +38,13 @@ export default defineConfig({
       },
     },
   },
+  // Vitest reads this file rather than a config of its own: a second config
+  // would have to repeat the jsx loader rules and the '@' alias above, and
+  // would drift from them the first time either changed.
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: './src/test/setup.js',
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })

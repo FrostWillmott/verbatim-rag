@@ -74,17 +74,20 @@ For frontend changes:
 ```bash
 cd frontend
 npm ci
+npm run lint
+npm test          # Vitest + Testing Library, jsdom, no browser needed
 npm run build
 ```
 
 CI gates the network-free `verbatim-core` tests on Python 3.10–3.12, Ruff across
 the core, full-RAG and API sources, the RAG and API test suites with a coverage
-floor, the frontend lint and build on Node 20, both container image builds,
-dependency auditing, and distribution builds.
+floor, the frontend lint, tests and build on Node 20, both container image
+builds, dependency auditing, and distribution builds.
 
 Two things it still does not cover, so include focused evidence in the pull
 request when you touch them: model downloads, which no job performs, and the
-frontend beyond a successful build — there is no UI test framework yet.
+parts of the UI outside `CleanFactInterface` — the UI suite covers the citation
+path, the reset between questions and keyboard activation, not the rest.
 
 ## Issues and discussions
 

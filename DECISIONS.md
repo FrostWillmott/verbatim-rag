@@ -39,6 +39,30 @@ an empty answer now get an exception. Done anyway, in the fork, with the reason
 recorded — the previous return value was not a weaker answer, it was a wrong
 one.
 
+## 2026-08-28 — The frontend gets a suite, scoped to the claim and to what people had to find twice
+
+`TST-4` was deferred for time, and the deferral stopped being honest once three
+passes — two manual, one outside evaluation — returned the same ranked list.
+What is tested is that list, in its order: a citation leads to its own source,
+which is the product's central claim and had nothing behind it; a new question
+carries no trace of the previous selection; and keyboard activation behaves like
+a click while leaving focus where the user put it.
+
+Vitest, configured inside the existing `vite.config.js` — a second config file
+would repeat the jsx loader rules and the `@` alias and drift from them. The
+component is driven through the real `ApiContext` with a harness that swaps the
+answer, so the submit path under test is the component's own, not a mock of it.
+
+Two things are deliberate. The suite covers `CleanFactInterface` and nothing
+else: this is the critical path plus two regressions, not coverage. And
+`MANUAL-UI-CHECK.md` stays — a suite cannot judge whether a focus ring is
+visible, and both manual passes are what told these tests what to assert.
+
+Non-vacuity was measured, not claimed: against the pre-fix component exactly the
+two regression tests fail, and against a mutant that always returns the first
+citation five of seven do. The mutant also caught a test whose name promised
+more than it checked, which is the reason to run one.
+
 ## 2026-08-28 — A refusal reversed: the product map was a compilation, not an invention
 
 `AIR-5` was rejected on the grounds that writing a product map for someone
