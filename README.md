@@ -2,15 +2,16 @@
 
 > **This branch is audit remediation, not a feature branch.**
 > Ten audit reports were produced against commit `88f510a`; this branch answers
-> them. **58 of 68 findings are closed** — 52 from the reports, 16 found by this
-> work. Tests 97 → 185, plus 7 UI tests where there was no framework; project
-> coverage 19% → 40.93% with a CI floor at 35; `npm audit` 13 findings (10 high)
+> them. **61 of 74 findings are closed** — 52 from the reports, 22 found by this
+> work. Tests 97 → 190, plus 7 UI tests where there was no framework; project
+> coverage 19% → 41.18% with a CI floor at 35; `npm audit` 13 findings (10 high)
 > → 0; CI green across nine jobs.
 >
 > Every finding, its status, and for the closed ones *how and why that way*:
 > **[`AUDIT.md`](AUDIT.md)**. The non-obvious calls: [`DECISIONS.md`](DECISIONS.md).
-> Six findings are refused with reasons and three are open questions for the
-> upstream maintainer — deliberately, not by omission.
+> Six findings are refused with reasons, three are open questions for the
+> upstream maintainer, and three are open items this branch's own review of the
+> finished diff turned up — all named, none omitted.
 >
 > The findings describe **upstream code**: at `88f510a` this fork was
 > byte-identical to `KRLabsOrg/verbatim-rag`.

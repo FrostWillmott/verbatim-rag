@@ -114,7 +114,11 @@ def validate_filter_expression(expression: Optional[str]) -> Optional[str]:
                 "each filter term must be <field> == '<value>' with field one of "
                 + ", ".join(FILTER_FIELDS)
             )
-    return expression
+    # The rebuilt expression, not the one that came in: the split above accepts
+    # `AND` and `And`, and Milvus only parses lowercase `and`. Returning the
+    # original let a validated filter fail inside pymilvus and surface as a
+    # generic 500 instead of the 400 this validator exists to produce.
+    return " and ".join(terms)
 
 
 # Request/Response models

@@ -4,7 +4,7 @@ Configuration management for the API
 
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 
 
@@ -52,6 +52,21 @@ class APIConfig(BaseSettings):
 
     # Logging
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+
+    @field_validator("log_level")
+    @classmethod
+    def _known_log_level(cls, value: str) -> str:
+        # create_app calls logging.basicConfig with this at import time, so an
+        # unknown name raises before the server exists and the traceback names
+        # basicConfig rather than the setting that caused it. Refuse it here,
+        # where the message can say which variable is wrong.
+        level = value.strip().upper()
+        if level not in {"CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG", "NOTSET"}:
+            raise ValueError(
+                f"LOG_LEVEL must be one of CRITICAL, ERROR, WARNING, INFO, DEBUG, "
+                f"NOTSET — got {value!r}"
+            )
+        return level
 
     # extra="ignore" because .env is shared with the rest of the stack: README tells
     # the user to put OPENAI_API_KEY there, and that key belongs to the LLM client,

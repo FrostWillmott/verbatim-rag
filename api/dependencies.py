@@ -69,8 +69,13 @@ def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> Verba
             # Create index
             index = VerbatimIndex(vector_store=vector_store, dense_provider=dense_provider)
 
-            # Create RAG instance with the index
-            _rag_instance = VerbatimRAG(
+            # Built into a local and published at the end of the block, not
+            # here: assigning the global first meant that a failure in the
+            # template loading below returned 500 to this one caller and left
+            # every later request passing the `is None` guard with a RAG whose
+            # TEMPLATES_PATH had never been applied — the same silent default
+            # this code exists to prevent, on the error path.
+            rag = VerbatimRAG(
                 index=index,
                 k=5,
                 template_mode="contextual",
@@ -82,8 +87,9 @@ def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> Verba
             # Passing that manager in instead would be wrong: it is built without
             # an llm_client and defaults to "static", so contextual mode would
             # break and every answer's framing would change silently.
-            apply_template_config(_rag_instance.template_manager, config.templates_path)
+            apply_template_config(rag.template_manager, config.templates_path)
 
+            _rag_instance = rag
             logger.info(f"RAG instance created with index path: {config.index_path}")
         except Exception as e:
             logger.error(f"Failed to create RAG instance: {e}")
@@ -102,8 +108,10 @@ def get_template_manager(
 
     if _template_manager is None:
         try:
-            _template_manager = TemplateManager()
-            apply_template_config(_template_manager, config.templates_path)
+            # Same order as above: configure first, publish last.
+            manager = TemplateManager()
+            apply_template_config(manager, config.templates_path)
+            _template_manager = manager
         except Exception as e:
             logger.error(f"Failed to create template manager: {e}")
             raise HTTPException(

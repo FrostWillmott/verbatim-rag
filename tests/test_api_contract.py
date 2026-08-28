@@ -511,3 +511,27 @@ class TestTheDuplicateAsyncRouteIsMarkedNotRemoved:
         response = api_client.post("/api/query_async", json={"question": "What is X?"})
 
         assert response.status_code == 200
+
+
+class TestTheFilterIsRebuiltNotEchoed:
+    """The validator splits on `and` case-insensitively; Milvus parses only the
+    lowercase form. Echoing the caller's text let a validated filter fail inside
+    pymilvus and surface as a generic 500.
+    """
+
+    def test_an_upper_case_join_comes_back_lowercase(self):
+        from api.app import validate_filter_expression
+
+        rebuilt = validate_filter_expression("user_id == 'a' AND dataset_id == 'b'")
+
+        assert rebuilt == "user_id == 'a' and dataset_id == 'b'"
+
+    def test_the_route_forwards_the_rebuilt_expression(self, api_client, fake_rag):
+        api_client.post(
+            "/api/query_async",
+            json={"question": "What is X?", "filter": "user_id == 'a' AND dataset_id == 'b'"},
+        )
+
+        assert fake_rag.query_async.call_args.kwargs["filter"] == (
+            "user_id == 'a' and dataset_id == 'b'"
+        )

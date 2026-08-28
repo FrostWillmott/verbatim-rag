@@ -8,6 +8,7 @@ rather than through them.
 import json
 
 import pytest
+from fastapi import HTTPException
 
 from api.dependencies import apply_template_config
 from verbatim_core.templates import TemplateManager
@@ -49,3 +50,28 @@ class TestApplyTemplateConfig:
 
         assert applied is False
         assert manager.current_mode == "static"
+
+
+class TestASingletonIsPublishedOnlyOnceItIsConfigured:
+    """The globals used to be assigned before the template config was applied, so
+    a failure there returned 500 to one caller and left every later request with
+    an unconfigured instance that passed the `is None` guard.
+    """
+
+    def test_a_failing_template_load_leaves_no_half_built_manager(self, monkeypatch, tmp_path):
+        from api import dependencies
+        from api.config import APIConfig
+
+        monkeypatch.setattr(dependencies, "_template_manager", None)
+        monkeypatch.setattr(
+            dependencies,
+            "apply_template_config",
+            lambda manager, path: (_ for _ in ()).throw(ValueError("bad template file")),
+        )
+
+        with pytest.raises(HTTPException):
+            dependencies.get_template_manager(
+                APIConfig(_env_file=None, templates_path=tmp_path / "templates.json")
+            )
+
+        assert dependencies._template_manager is None

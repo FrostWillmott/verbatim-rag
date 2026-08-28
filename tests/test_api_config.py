@@ -65,3 +65,17 @@ class TestDocumentedEnvironmentNames:
         assert config.max_question_length == 1000
         # Deliberately relative: the container gets /data/index.db from Compose.
         assert str(config.index_path) == "index.db"
+
+
+class TestLogLevelIsRefusedEarlyRatherThanAtImport:
+    """create_app calls logging.basicConfig with this value at import time, so an
+    unknown name raises before the server exists — and names basicConfig, not the
+    setting. The refusal belongs here, where the message can say which variable.
+    """
+
+    def test_an_unknown_level_is_refused_by_name(self):
+        with pytest.raises(ValueError, match="LOG_LEVEL"):
+            APIConfig(_env_file=None, log_level="verbose")
+
+    def test_a_known_level_is_normalised_to_upper_case(self):
+        assert APIConfig(_env_file=None, log_level="debug").log_level == "DEBUG"
