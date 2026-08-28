@@ -45,6 +45,11 @@ builds and the frontend suite.
   belonged to, because the identifier is a position in the citation array rather
   than an identity.
 
+Row ids are `PREFIX-N`, one prefix per report, and the same ids are used in
+commit messages and in the pull request — the key is under
+[Identifiers](#identifiers). `BEY-*` is the one prefix that indexes no report:
+those findings came from this work.
+
 Nine of the ten reports' scoring formulas are reproduced exactly from their own
 inputs, and the tenth is shown not to be — see [Reconstructed scoring
 model](#reconstructed-scoring-model).
@@ -86,10 +91,29 @@ upstream.
 Severity is the audit's own rating, kept verbatim so the register can be read
 against the reports.
 
-Identifiers are this file's, not the reports': only the cognitive-debt report
-numbers its own findings, and those keep its `CD-001` form so a reader can match
-them line for line. The rest are `PREFIX-N` by report, numbered in the order that
-report lists them.
+### Identifiers
+
+They are this file's, not the reports': only the cognitive-debt report numbers
+its own findings, and those keep its `CD-001` form so a reader can match them
+line for line. The rest are `PREFIX-N` by report, numbered in the order that
+report lists them. Commit messages and the pull request use these same ids, so
+the table is the key to both.
+
+| Prefix | Report | Rows |
+|---|---|---:|
+| `SEC` | Security / vulnerabilities | 5 |
+| `DEP` | Dependency hygiene | 10 |
+| `CI` | CI/CD | 6 |
+| `CFG` | Configuration hygiene | 4 |
+| `TST` | Test quality | 5 |
+| `DEAD` | Dead code | 7 |
+| `CD` | Cognitive debt — the report's own numbering, hence `CD-001` | 5 |
+| `AIR` | AI readiness | 5 |
+| `HYG` | Codebase hygiene (the report calls itself "tech health") | 5 |
+| `BEY` | **Beyond the audit** — found by this work, in no report | 22 |
+
+Open-source readiness produced no findings: it is a domain no-op for a fork with
+no delta of its own, which is why it has no prefix.
 
 ## Scoreboard
 
