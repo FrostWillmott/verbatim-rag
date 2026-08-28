@@ -13,9 +13,12 @@ about who the rules are for.
 ## What this repository is
 
 A fork of [`KRLabsOrg/verbatim-rag`](https://github.com/KRLabsOrg/verbatim-rag).
-Almost all code here was written upstream. `main` is kept byte-identical to
-`upstream/main` so contributions can branch cleanly from it; work happens on
-branches that are either sent upstream as pull requests or never merged at all.
+Almost all code here was written upstream. `main` was kept byte-identical to
+`upstream/main` while this fork was only a staging area for pull requests; it now
+carries the audit-remediation work, and `88f510a` — the commit the audit reports
+were taken against, and the last one identical to upstream — is tagged
+`audited-baseline`. A clean base for a future contribution comes from
+`upstream/main`, which is what actually guarantees it.
 
 That has a consequence worth absorbing before changing anything: **most defects
 you find belong to someone else's public library.** A breaking change to its API,
@@ -134,7 +137,8 @@ strings that no prompt here contains. What did bind is the rest — the untruste
 input handling behind `BEY-4`, the injection-over-patching preference visible in
 every test double, and `inherited-codebases.md` throughout.
 
-None of it is proposed upstream. This branch is never merged.
+None of it is proposed upstream. It is merged into this fork's `main` and
+nowhere else.
 
 ## Recording work
 

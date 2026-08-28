@@ -72,8 +72,10 @@ your own", which in practice means presenting someone else's library as your own
 project. Those rows are marked `rejected` with the reason rather than skipped.
 
 The branch is based on `88f510a` so every finding is reproducible from its
-starting point, and it is never merged: `main` stays a byte-identical mirror of
-upstream.
+starting point. That commit is tagged `audited-baseline`: it is what the reports
+describe and the last state identical to upstream. The work is merged into this
+fork's `main` and proposed nowhere else — see `DECISIONS.md` for why the mirror
+was given up, which is not the reason it was kept.
 
 ## Legend
 

@@ -119,6 +119,32 @@ are compiled; personas and per-persona metrics do not exist anywhere and are
 named as a gap rather than filled. A fork has no authority to invent product
 intent and then cite it back as if it had been recorded.
 
+## 2026-08-28 — `main` carries the work, superseding the mirror decision below
+
+The entry "Audit remediation lives on a branch that is never merged" gave a
+reason that was true for a fork used as a staging area for upstream pull
+requests: keep `main` byte-identical so a contribution branches cleanly. Those
+pull requests are merged and that use is over.
+
+What the mirror costs now is that the work is invisible on the only paths that
+measure it. The audits were produced by a tool that clones a repository and reads
+its **default branch**; the fork they ran against is a fork of this one, and
+GitHub's sync pulls the parent's same-named branch. A reviewer who connects this
+repository, or updates their own copy, and reruns would be handed `88f510a` — the
+unfixed code the reports already describe — and would correctly conclude that
+nothing changed.
+
+So `main` is fast-forwarded to the branch. The mirror's actual function survives
+without it: a clean base for a future contribution comes from `upstream/main`,
+which is the thing that guarantees it, not from a copy that happens to agree.
+`88f510a` is tagged `audited-baseline` so the audited state stays nameable rather
+than merely reachable.
+
+Two consequences, neither hidden. The pull request that existed so CI would run
+becomes merged, and its body is kept as the summary of the change. And the push
+to `main` finally exercises the docs *deploy* job, which `SEC-1` had to record as
+reviewed rather than run — the one job a branch cannot reach.
+
 ## 2026-08-28 — The three questions are answered here, and the boundary that keeps six refusals standing
 
 `CFG-4`, `DEAD-4` and `BEY-9` were `question`: closing them, the rows said,
