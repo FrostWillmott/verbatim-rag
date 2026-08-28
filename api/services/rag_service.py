@@ -83,6 +83,23 @@ class APIService:
             logger.error(f"Async query execution failed: {e}")
             raise
 
+    def stream_query(
+        self,
+        question: str,
+        num_docs: Optional[int] = None,
+        **search_options: Any,
+    ):
+        """Stage-by-stage answer, through the same layer as the other two.
+
+        A passthrough, and deliberately thin: what it buys is that no route
+        reaches past this class for a query. DEAD-4 asked whether this layer owns
+        the request path or is a validator; it owns it, and a streaming query is
+        a query.
+        """
+        from verbatim_rag import StreamingRAG
+
+        return StreamingRAG(self.rag).stream_query(question, num_docs, **search_options)
+
     def get_templates(self) -> list:
         """Get available templates"""
         try:

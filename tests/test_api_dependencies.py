@@ -75,3 +75,25 @@ class TestASingletonIsPublishedOnlyOnceItIsConfigured:
             )
 
         assert dependencies._template_manager is None
+
+
+class TestTheFactoryRefusesAnIndexItDidNotBuild:
+    """BEY-9's danger is silence: the wrong pairing answers rather than raising.
+    The factory checks provenance before it loads anything.
+    """
+
+    def test_a_disagreeing_marker_stops_construction(self, monkeypatch, tmp_path):
+        from api import dependencies, provenance
+        from api.config import APIConfig
+
+        index = tmp_path / "index.db"
+        provenance.record(index, embedding_model="all-MiniLM-L6-v2", collection="verbatim_rag")
+        monkeypatch.setattr(dependencies, "_rag_instance", None)
+
+        with pytest.raises(HTTPException) as raised:
+            dependencies.get_rag_instance(APIConfig(_env_file=None, index_path=index))
+
+        # The embedding model is never constructed: the refusal comes first, so
+        # this test needs no model download and no Milvus.
+        assert "all-MiniLM-L6-v2" in raised.value.detail
+        assert dependencies._rag_instance is None

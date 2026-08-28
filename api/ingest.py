@@ -29,6 +29,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from api import provenance
 from api.config import APIConfig
 from api.dependencies import get_rag_instance
 from verbatim_rag.ingestion.document_processor import DocumentProcessor
@@ -64,9 +65,19 @@ def main(argv: list[str]) -> int:
         logger.error("Nothing to index: no readable documents in %s", argv)
         return 1
 
+    config = APIConfig()
     logger.info("Read %d document(s); indexing into the API's own index", len(documents))
-    rag = get_rag_instance(APIConfig())
+    rag = get_rag_instance(config)
     rag.index.add_documents(documents)
+
+    # Recorded after the write, so the marker never claims an index that does
+    # not exist: it is what lets the API refuse a configuration that did not
+    # build this index rather than answer from it (BEY-9).
+    provenance.record(
+        config.index_path,
+        embedding_model=config.embedding_model,
+        collection=config.milvus_collection,
+    )
     logger.info("Indexed %d document(s)", len(documents))
     return 0
 

@@ -535,3 +535,24 @@ class TestTheFilterIsRebuiltNotEchoed:
         assert fake_rag.query_async.call_args.kwargs["filter"] == (
             "user_id == 'a' and dataset_id == 'b'"
         )
+
+
+class TestEveryQueryPathGoesThroughTheServiceLayer:
+    """DEAD-4: two routes reached past APIService to the RAG directly, and its
+    own query methods were dead code — which is how BEY-1's broken signature
+    stayed invisible. The observable is that service-level validation now applies
+    everywhere, including the streaming route.
+    """
+
+    def test_the_configured_question_limit_applies_to_the_streaming_route(self, api_client):
+        from api.app import app
+        from api.config import APIConfig, get_config
+
+        app.dependency_overrides[get_config] = lambda: APIConfig(
+            _env_file=None, max_question_length=10
+        )
+
+        response = api_client.post("/api/query/stream", json={"question": "x" * 50})
+
+        assert response.status_code == 400
+        assert "10" in response.json()["detail"]

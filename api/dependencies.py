@@ -8,6 +8,7 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException
 
+from api import provenance
 from api.config import APIConfig, get_config
 from api.services.rag_service import APIService
 from verbatim_core.templates import TemplateManager
@@ -52,15 +53,26 @@ def get_rag_instance(config: Annotated[APIConfig, Depends(get_config)]) -> Verba
                 api_base=config.llm_api_base,
             )
 
+            # Refused before anything is loaded: an index built by another
+            # embedding model or under another collection name does not fail on
+            # read, it answers from vectors this model never wrote. See BEY-9.
+            conflict = provenance.mismatch(
+                config.index_path,
+                embedding_model=config.embedding_model,
+                collection=config.milvus_collection,
+            )
+            if conflict:
+                raise RuntimeError(conflict)
+
             dense_provider = SentenceTransformersProvider(
-                model_name="ibm-granite/granite-embedding-small-english-r2",
+                model_name=config.embedding_model,
                 device="cpu",
             )
 
             # Create vector store
             vector_store = LocalMilvusStore(
                 db_path=str(config.index_path),
-                collection_name="acl",
+                collection_name=config.milvus_collection,
                 enable_dense=True,
                 enable_sparse=False,
                 dense_dim=dense_provider.get_dimension(),

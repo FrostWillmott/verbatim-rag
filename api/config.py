@@ -50,6 +50,19 @@ class APIConfig(BaseSettings):
         default="https://api.groq.com/openai/v1/", validation_alias="LLM_API_BASE"
     )
 
+    # The other two constants CFG-4 asks about. They are settings on one
+    # condition, added with them: a wrong value here does not fail, it returns
+    # confident nonsense — both embedding models in play emit 384 dimensions, so
+    # vectors written by one load into an index built by the other, and a
+    # changed collection name silently reads an index nobody wrote. The guard in
+    # api/dependencies.py is what makes exposing them safe; without it these
+    # would still belong in source.
+    embedding_model: str = Field(
+        default="ibm-granite/granite-embedding-small-english-r2",
+        validation_alias="EMBEDDING_MODEL",
+    )
+    milvus_collection: str = Field(default="acl", validation_alias="MILVUS_COLLECTION")
+
     # Logging
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
 

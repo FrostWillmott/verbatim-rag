@@ -36,6 +36,9 @@ class TestMain:
         assert ingest.main([]) == 2
 
     def test_documents_are_indexed_through_the_api_factory(self, tmp_path: Path, monkeypatch):
+        # Own the index path: without it the run reads the developer's .env and
+        # writes the provenance marker wherever that points.
+        monkeypatch.setenv("INDEX_PATH", str(tmp_path / "index.db"))
         document = tmp_path / "note.md"
         document.write_text("Verbatim RAG returns exact spans from source documents.\n")
 
@@ -47,6 +50,7 @@ class TestMain:
         assert [d.title for d in indexed] == ["note"]
 
     def test_an_empty_corpus_is_reported_rather_than_indexed(self, tmp_path: Path, monkeypatch):
+        monkeypatch.setenv("INDEX_PATH", str(tmp_path / "index.db"))
         rag = MagicMock()
         monkeypatch.setattr(ingest, "get_rag_instance", lambda config: rag)
         monkeypatch.setattr(ingest, "collect_documents", lambda paths: [])

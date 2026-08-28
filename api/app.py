@@ -18,7 +18,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 try:
     from verbatim_rag import (
         QueryResponse,
-        StreamingRAG,
         TemplateManager,
         VerbatimRAG,
     )
@@ -339,8 +338,11 @@ async def query_endpoint(
         # Validate request
         api_service.validate_query_request(request.question)
 
-        # Execute query using the RAG package directly
-        response = api_service.rag.query(
+        # Through the service layer, not past it: DEAD-4 asked whether this
+        # class owns the request path, and the answer this fork gives is yes.
+        # The bypass is also how BEY-1 stayed hidden — a signature nothing
+        # called cannot be seen to be wrong.
+        response = api_service.query(
             request.question,
             k=request.k,
             hybrid_weights=request.hybrid_weights,
@@ -434,8 +436,7 @@ async def query_async_slash_endpoint(
         # Validate request
         api_service.validate_query_request(request.question)
 
-        # Execute async query using the RAG package directly
-        response = await api_service.rag.query_async(
+        response = await api_service.query_async(
             request.question,
             k=request.k,
             hybrid_weights=request.hybrid_weights,
@@ -471,7 +472,8 @@ async def get_templates(
 @app.post("/api/query/stream")
 async def query_stream_endpoint(
     request: StreamQueryRequestModel,
-    rag: Annotated[VerbatimRAG, Depends(get_rag_instance)],
+    # No RAG dependency any more: the service builds the stream, and it already
+    # depends on the same factory, so the singleton is still constructed here.
     api_service: Annotated[APIService, Depends(get_api_service)],
     _: Annotated[bool, Depends(check_system_ready)],
 ):
@@ -488,8 +490,7 @@ async def query_stream_endpoint(
         # Validate request
         api_service.validate_query_request(request.question)
 
-        # Create streaming RAG instance
-        streaming_rag = StreamingRAG(rag)
+        # Same layer as the other two.
 
         async def generate_clean_response():
             """Clean response generator using the package's streaming interface"""
@@ -499,7 +500,7 @@ async def query_stream_endpoint(
 
             try:
                 stage_count = 0
-                async for stage in streaming_rag.stream_query(
+                async for stage in api_service.stream_query(
                     request.question,
                     request.num_docs,
                     filter=request.filter,

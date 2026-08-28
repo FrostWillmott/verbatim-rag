@@ -119,6 +119,36 @@ are compiled; personas and per-persona metrics do not exist anywhere and are
 named as a gap rather than filled. A fork has no authority to invent product
 intent and then cite it back as if it had been recorded.
 
+## 2026-08-28 — The three questions are answered here, and the boundary that keeps six refusals standing
+
+`CFG-4`, `DEAD-4` and `BEY-9` were `question`: closing them, the rows said,
+means deciding for someone else's project. That was right about the six
+`rejected` rows and wrong about these three, and the difference is worth stating
+because otherwise the register looks inconsistent.
+
+The six refusals are about the **published contract**: a breaking change to a
+public constructor, a removal version for a compatibility module, release
+automation for something that publishes nothing. Those belong to whoever owns
+the package's users. These three are about **the prototype surface and its
+configuration** — `api/`, which this branch has already rewritten several times
+over, and two values an operator sets. Nothing here changes what an installed
+`verbatim-rag` does.
+
+And each was answered by engineering rather than by preference:
+
+- `BEY-9` was dangerous because it was silent, not because one pairing is right.
+  Ingest records what built the index; the factory refuses to serve an index
+  built by another model or collection, and calls an unmarked one unknown rather
+  than compatible. Which corpus a deployment wants stays a configuration choice —
+  now a checked one.
+- `CFG-4` follows from that: the remaining two constants are settings because
+  the guard makes a wrong value fail loudly instead of answering from the wrong
+  index. Without the guard they would still belong in source.
+- `DEAD-4` asked whether `APIService` owns the request path. It does now, for the
+  reason the project's own layering gives and for a second one this branch
+  learned: the bypass is how `BEY-1`'s broken signature stayed invisible, because
+  a method nothing calls cannot be seen to be wrong.
+
 ## 2026-08-28 — Two calls from the second UI pass: reconcile instead of refocus, 404 instead of fallback
 
 The keyboard losing focus when a citation is activated looked like a missing
