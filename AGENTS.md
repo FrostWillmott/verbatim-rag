@@ -106,6 +106,14 @@ under — including `inherited-codebases.md`, which exists because two changes h
 had to be reverted for the same reason and the lesson was worth writing down
 rather than remembering.
 
+They are general modules, not a set written for this repository, so parts of them
+are inert here and it is more useful to say which than to imply they all applied:
+`backend-fastapi.md` covers async SQLAlchemy and Alembic, neither of which this
+project uses, and `ai-engineering.md` carries a rule about Cyrillic in prompt
+strings that no prompt here contains. What did bind is the rest — the untrusted-
+input handling behind `BEY-4`, the injection-over-patching preference visible in
+every test double, and `inherited-codebases.md` throughout.
+
 None of it is proposed upstream. This branch is never merged.
 
 ## Recording work

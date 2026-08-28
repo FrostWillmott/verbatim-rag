@@ -39,6 +39,26 @@ an empty answer now get an exception. Done anyway, in the fork, with the reason
 recorded — the previous return value was not a weaker answer, it was a wrong
 one.
 
+## 2026-08-28 — Superseding two numbers in the 2026-08-27 scoring entry
+
+The entry below, "The audit's own scoring model, transcribed and calibrated",
+still carries two figures that later work disproved, and this log does not edit
+its own past: the correction goes here.
+
+"Reproduces every published score exactly — ten of ten" is **nine of ten**. The
+cognitive-debt formula gives 58.5 against a published 59 and only reproduces
+under round-half-up, which that report never states. The first pass called it ten
+of ten because `7×.25 + 6×.20 + 6×.20 + 2×.10 + 6×.25` evaluates to
+`5.8500000000000005` in binary floating point, which rounds the convenient way —
+a right answer for a wrong reason, and the reason was a float artefact.
+
+"Security goes 25 → 92" is **25 → 100**, since `SEC-3` was closed in `735a50a`
+and no finding from that report remains open.
+
+Both corrections are already in `AUDIT.md`; what was missing was this entry,
+which the project's own rule requires — a reversed decision is closed by a new
+record, not by silence in the old one.
+
 ## 2026-08-28 — The frontend gets a suite, scoped to the claim and to what people had to find twice
 
 `TST-4` was deferred for time, and the deferral stopped being honest once three

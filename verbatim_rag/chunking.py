@@ -6,6 +6,20 @@ Use ChunkerProvider interface and implementations (MarkdownChunkerProvider,
 ChonkieChunkerProvider, SimpleChunkerProvider) instead.
 
 This module is kept for backward compatibility but may be removed in a future version.
+
+Setting that version is the maintainer's call. What can be written down without
+taking it is the condition that makes removal safe, so whoever decides is not
+starting from a blank page:
+
+- nothing inside this repository imports it — `grep -rnE "from verbatim_rag.chunking|import chunking"`
+  over `verbatim_rag/`, `packages/`, `api/` and `scripts/` returns only this file;
+- every construct it exposes has an equivalent in `verbatim_rag.chunker_providers`
+  (`MarkdownChunkerProvider`, `ChonkieChunkerProvider`, `SimpleChunkerProvider`);
+- the `DeprecationWarning` below has been shipped in at least one release that
+  users could see, which is the part a fork cannot verify from the inside.
+
+The third is the only one still open, and it is a fact about downstream users
+rather than about this code.
 """
 
 from __future__ import annotations
