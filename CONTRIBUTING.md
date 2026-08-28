@@ -84,6 +84,11 @@ the core, full-RAG and API sources, the RAG and API test suites with a coverage
 floor, the frontend lint, tests and build on Node 20, both container image
 builds, dependency auditing, and distribution builds.
 
+If a change has to be undone, [`AGENTS.md`](AGENTS.md#rolling-back) records what
+reverts cleanly — a commit, the container stack, the pin sets — and the one thing
+that does not: the index only grows, so the only undo is destroying the volume.
+Read it before an ingest you cannot afford to repeat.
+
 Two things it still does not cover, so include focused evidence in the pull
 request when you touch them: model downloads, which no job performs, and the
 parts of the UI outside `CleanFactInterface` — the UI suite covers the citation
