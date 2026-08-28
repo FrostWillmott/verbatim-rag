@@ -235,10 +235,17 @@ const CleanFactInterface = () => {
               if (citationNum) {
                 const num = parseInt(citationNum, 10);
                 const fact = facts.find(f => f.citationNumber === num);
+                // A number in the answer text with no matching citation used to
+                // render as an InlineCitation anyway: focusable, clickable,
+                // announced as "Show citation N", and doing nothing at all. It
+                // renders as plain text instead — the affordance was false.
+                if (!fact) {
+                  return <sup className="align-super text-[0.65em] ml-0.5 text-muted-foreground">[{num}]</sup>;
+                }
                 return (
                   <InlineCitation
                     citationNumber={num}
-                    onClick={() => fact && handleFactClick(fact)}
+                    onClick={() => handleFactClick(fact)}
                   />
                 );
               }
