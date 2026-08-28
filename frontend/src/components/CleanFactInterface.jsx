@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -48,6 +48,59 @@ const MarkdownComponents = {
   ),
 };
 
+// Inline citation component - clean and simple
+const InlineCitation = ({ citationNumber, factType = 'display', onClick }) => {
+  return (
+    <sup
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Show citation ${citationNumber}`}
+      className={`align-super text-[0.65em] ml-0.5 cursor-pointer select-none transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-primary rounded font-medium ${factType === 'reference' ? 'text-primary/70 hover:text-primary/90' : 'text-primary hover:text-primary/80'}`}
+    >
+      [{citationNumber}]
+    </sup>
+  );
+};
+
+// remark plugin to turn [n] into link nodes we later render as superscript citations
+const remarkInlineCitations = () => (tree) => {
+  const walk = (node, parent) => {
+    if (!node) return;
+    if (parent && (parent.type === 'code' || parent.type === 'inlineCode')) return;
+    if (node.type === 'text') {
+      const value = node.value;
+        // quick check
+      if (!/\[\d+\]/.test(value)) return;
+      const regex = /\[(\d+)\]/g;
+      let match; let last = 0; const newNodes = [];
+      while ((match = regex.exec(value)) !== null) {
+        const idx = match.index;
+        if (idx > last) newNodes.push({ type: 'text', value: value.slice(last, idx) });
+        const num = parseInt(match[1], 10);
+        newNodes.push({
+          type: 'link',
+          url: `#citation-${num}`,
+          data: { hProperties: { 'data-citation': num } },
+          children: [{ type: 'text', value: `[${num}]` }]
+        });
+        last = idx + match[0].length;
+      }
+      if (last < value.length) newNodes.push({ type: 'text', value: value.slice(last) });
+      if (newNodes.length) {
+        const idxInParent = parent.children.indexOf(node);
+        parent.children.splice(idxInParent, 1, ...newNodes);
+      }
+      return;
+    }
+    if (node.children) { [...node.children].forEach(child => { walk(child, node); }); }
+  };
+  walk(tree, null);
+};
+
+const ANSWER_REMARK_PLUGINS = [remarkGfm, remarkInlineCitations];
+
 const CleanFactInterface = () => {
   const { isLoading, isResourcesLoaded, documentCount, currentQuery, submitQuery, resetQuery } = useApi();
   const [question, setQuestion] = useState('');
@@ -59,6 +112,10 @@ const CleanFactInterface = () => {
     e.preventDefault();
     if (!question.trim() || !isResourcesLoaded) return;
 
+    // Before the request, not after: highlightedFactId is a position in the
+    // citation array, so leaving it set re-applies the old selection to whatever
+    // citation happens to land in that slot in the next answer.
+    setHighlightedFactId(null);
     await submitQuery(question);
     setQuestion('');
     setSelectedDocument(0);
@@ -68,6 +125,7 @@ const CleanFactInterface = () => {
     resetQuery();
     setQuestion('');
     setSelectedDocument(0);
+    setHighlightedFactId(null);
   };
 
   // Extract facts preserving backend ordering & types
@@ -122,11 +180,15 @@ const CleanFactInterface = () => {
     return Object.values(documentGroups);
   };
 
-  const facts = extractFacts();
-  const groupedDocuments = groupDocuments();
+  // Memoised, and not for speed. Everything the answer is rendered from has to
+  // keep its identity across a re-render, or React remounts the whole subtree on
+  // every state change — which is what took focus off a citation the moment it
+  // was activated from the keyboard.
+  const facts = useMemo(extractFacts, [currentQuery]);
+  const groupedDocuments = useMemo(groupDocuments, [currentQuery]);
 
   // Handle fact click with scroll-to-highlight
-  const handleFactClick = (fact) => {
+  const handleFactClick = useCallback((fact) => {
     const targetGroupIndex = groupedDocuments.findIndex(group =>
       group.chunks.some(chunk => chunk.originalIndex === fact.docIndex)
     );
@@ -165,23 +227,35 @@ const CleanFactInterface = () => {
         }
       }, 100);
     }
-  };
+  }, [groupedDocuments]);
 
-  // Inline citation component - clean and simple
-  const InlineCitation = ({ citationNumber, factType = 'display', onClick }) => {
-    return (
-      <sup
-        onClick={onClick}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
-        role="button"
-        tabIndex={0}
-        aria-label={`Show citation ${citationNumber}`}
-        className={`align-super text-[0.65em] ml-0.5 cursor-pointer select-none transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-primary rounded font-medium ${factType === 'reference' ? 'text-primary/70 hover:text-primary/90' : 'text-primary hover:text-primary/80'}`}
-      >
-        [{citationNumber}]
-      </sup>
-    );
-  };
+  // Identity has to survive a re-render: an inline `components` map makes the
+  // anchor a new element type each time, and React unmounts and remounts every
+  // citation in the answer — losing the focused one.
+  const answerComponents = useMemo(() => ({
+    ...MarkdownComponents,
+    a: ({ node, children, ...rest }) => {
+      const citationNum = node?.properties?.['data-citation'];
+      if (citationNum) {
+        const num = parseInt(citationNum, 10);
+        const fact = facts.find(f => f.citationNumber === num);
+        // A number in the answer text with no matching citation used to
+        // render as an InlineCitation anyway: focusable, clickable,
+        // announced as "Show citation N", and doing nothing at all. It
+        // renders as plain text instead — the affordance was false.
+        if (!fact) {
+          return <sup className="align-super text-[0.65em] ml-0.5 text-muted-foreground">[{num}]</sup>;
+        }
+        return (
+          <InlineCitation
+            citationNumber={num}
+            onClick={() => handleFactClick(fact)}
+          />
+        );
+      }
+      return <a {...rest}>{children}</a>;
+    }
+  }), [facts, handleFactClick]);
 
   // Render answer with inline clickable citations and ReactMarkdown support
   const renderAnswerWithFacts = () => {
@@ -189,69 +263,11 @@ const CleanFactInterface = () => {
       return null;
     }
 
-    // remark plugin to turn [n] into link nodes we later render as superscript citations
-    const remarkInlineCitations = () => (tree) => {
-      const walk = (node, parent) => {
-        if (!node) return;
-        if (parent && (parent.type === 'code' || parent.type === 'inlineCode')) return;
-        if (node.type === 'text') {
-          const value = node.value;
-            // quick check
-          if (!/\[\d+\]/.test(value)) return;
-          const regex = /\[(\d+)\]/g;
-          let match; let last = 0; const newNodes = [];
-          while ((match = regex.exec(value)) !== null) {
-            const idx = match.index;
-            if (idx > last) newNodes.push({ type: 'text', value: value.slice(last, idx) });
-            const num = parseInt(match[1], 10);
-            newNodes.push({
-              type: 'link',
-              url: `#citation-${num}`,
-              data: { hProperties: { 'data-citation': num } },
-              children: [{ type: 'text', value: `[${num}]` }]
-            });
-            last = idx + match[0].length;
-          }
-          if (last < value.length) newNodes.push({ type: 'text', value: value.slice(last) });
-          if (newNodes.length) {
-            const idxInParent = parent.children.indexOf(node);
-            parent.children.splice(idxInParent, 1, ...newNodes);
-          }
-          return;
-        }
-        if (node.children) { [...node.children].forEach(child => { walk(child, node); }); }
-      };
-      walk(tree, null);
-    };
-
     return (
       <div className="text-lg lg:text-xl leading-relaxed text-foreground">
         <ReactMarkdown
-          remarkPlugins={[remarkGfm, remarkInlineCitations]}
-          components={{
-            ...MarkdownComponents,
-            a: ({ node, children, ...rest }) => {
-              const citationNum = node?.properties?.['data-citation'];
-              if (citationNum) {
-                const num = parseInt(citationNum, 10);
-                const fact = facts.find(f => f.citationNumber === num);
-                // A number in the answer text with no matching citation used to
-                // render as an InlineCitation anyway: focusable, clickable,
-                // announced as "Show citation N", and doing nothing at all. It
-                // renders as plain text instead — the affordance was false.
-                if (!fact) {
-                  return <sup className="align-super text-[0.65em] ml-0.5 text-muted-foreground">[{num}]</sup>;
-                }
-                return (
-                  <InlineCitation
-                    citationNumber={num}
-                    onClick={() => handleFactClick(fact)}
-                  />
-                );
-              }
-              return <a {...rest}>{children}</a>;
-            }
-          }}
+          remarkPlugins={ANSWER_REMARK_PLUGINS}
+          components={answerComponents}
         >
           {currentQuery.answer}
         </ReactMarkdown>
@@ -526,7 +542,7 @@ const CleanFactInterface = () => {
               {!currentQuery && !isLoading && (
                 <div className="text-center py-16 lg:py-20">
                   <div className="w-24 h-24 lg:w-32 lg:h-32 mx-auto mb-6 lg:mb-8 bg-accent rounded-full flex items-center justify-center p-4 lg:p-6">
-                    <img src="/chiliground-transparent.png" alt="Chili Mascot" className="w-full h-full object-contain" />
+                    <img src="/kr.svg" alt="KR Labs" className="w-full h-full object-contain" />
                   </div>
                   <h3 className="text-2xl lg:text-3xl font-semibold mb-4 lg:mb-6 text-foreground">
                     {isResourcesLoaded ? 'Ready to answer your questions' : 'Loading system...'}

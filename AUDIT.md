@@ -133,7 +133,7 @@ suppression, not invention.
 | TST-1 | The RAG happy path (`verbatim_rag`) has no tests at all | — | `done` | **How:** `tests/test_rag_pipeline.py` runs documents in and a cited answer out, against doubles for the index, the span extractor and the LLM client — all three are constructor arguments of `VerbatimRAG`, so nothing is patched. Ten tests: ingestion reaches the index, the answer quotes the source verbatim, every citation's text is present in the document it points at, every highlight's offsets slice to its own text, `k` is honoured, and a question the corpus cannot answer yields no citations. **Checked for vacuity:** making the fake extractor return invented text fails exactly three of them — the verbatim, citation and offset assertions — so they exercise `_verify_spans` and the response builder rather than the doubles. **Coverage:** `verbatim_rag/core.py` 20% → 48%, `schema_adapter.py` 0% → 100%, project-wide 36% → 39%. The modest total is honest: the remaining mass is Milvus adapters, and testing those to move a number is what `testing.md` calls worthless. |
 | TST-2 | No contract tests for the FastAPI surface | — | `done` | **How:** `tests/test_api_contract.py`, 22 tests through the real `APIService` against doubles for the RAG and template seams — no Milvus, no LLM key. They cover the routes, the settings that must take effect, the request bounds, the LLM-key reporting and the streaming path's shared state. `api/` coverage went from 0% to 62%. **Why doubles rather than a live stack:** the seams are constructor arguments and FastAPI dependencies, so nothing is patched; a suite needing Milvus would not run in CI, which is where it has to run. |
 | TST-3 | No coverage target; coverage measured ad hoc for core only | — | `done` | **How:** coverage configured in `pyproject.toml` over all three packages with `fail_under = 35`, wired into CI and into `make test`. **Why 35 and not a round 70:** the floor exists to stop coverage sliding back, not to look respectable. The suite reaches 39.51%; a target nobody can meet gets disabled within a month, and one nobody can miss measures nothing. Raising it is a decision to take when the next surface is covered, not a wish to pin now. **And it does something.** Proven, not asserted: deselect the full-stack tests and coverage falls to 31.43%, so the gate fails. It is the safeguard against those tests silently ceasing to run. **Found while doing this:** the earlier work had **broken CI** without anyone noticing, because nothing has been pushed. The matrix installs `verbatim-core` only, so the new RAG and API tests failed at *collection* — a marker alone does not help, `-m` filters after collection. `tests/conftest.py` now skips those files when the root package is absent, the matrix runs `-m "not requires_full_stack"`, and a separate `test-full` job installs the root and runs everything. Verified by rebuilding CI's exact environment locally: 107 pass there, 170 with the full stack. |
-| TST-4 | No frontend test framework at all | — | `deferred` | Standing up Vitest or Playwright is most of a day, and it needs someone who can exercise the UI to judge whether a test asserts the right thing. The earlier note here said the components most in need of testing were scheduled for deletion under DEAD-1 — that deletion has since happened, so the argument no longer applies and the honest one is time. It is also what keeps CD-002 open. **The manual pass supplied the missing half.** The judgement about what a test should assert is no longer absent: three scenarios came back ranked — a second query leaving no trace of the first in the DOM, every stream `type` having a branch in the consumer, and keyboard activation of a citation. The first is what `noArrayIndexKey` and `useExhaustiveDependencies` are held off for; the second is BEY-7, found by the same pass and now fixed without the test that would have caught it. What remains deferred is only the framework, and only for time. |
+| TST-4 | No frontend test framework at all | — | `deferred` | Standing up Vitest or Playwright is most of a day, and it needs someone who can exercise the UI to judge whether a test asserts the right thing. The earlier note here said the components most in need of testing were scheduled for deletion under DEAD-1 — that deletion has since happened, so the argument no longer applies and the honest one is time. It is also what keeps CD-002 open. **The manual pass supplied the missing half.** The judgement about what a test should assert is no longer absent: three scenarios came back ranked — a second query leaving no trace of the first in the DOM, every stream `type` having a branch in the consumer, and keyboard activation of a citation. The first is what `noArrayIndexKey` and `useExhaustiveDependencies` are held off for; the second is BEY-7, found by the same pass and now fixed without the test that would have caught it. What remains deferred is only the framework, and only for time. **The second pass sharpened this again:** its top scenario is no longer a hypothesis but `BEY-13`, a bug that a person caught only because they controlled the citation count — the reporter's own note says a test must fix that count or it goes green by accident. That is a test worth having and still nothing to run it in. |
 | TST-5 | No fake-provider harness; test layers not separated | — | `done` | **How:** `tests/fakes.py` holds `FakeIndex`, `FakeSpanExtractor` and `FakeLLMClient`, reusable by any future test of the pipeline. `FakeSpanExtractor` deliberately returns text that really occurs in the document it was given, because the pipeline drops spans that fail verification and a double returning invented text would let a broken pipeline pass. **Not done, deliberately:** the `tests/unit` / `tests/integration` / `tests/e2e` split the report suggests. This repository keeps a flat `tests/` directory and imposing a new layout on inherited tests is the kind of unasked-for restructuring this branch has refused elsewhere. |
 
 ## Dead code — 57/100
@@ -185,10 +185,11 @@ suppression, not invention.
 ## Beyond the audit
 
 Found while verifying the reports against the tree, while writing the first API
-test, by a human working through `MANUAL-UI-CHECK.md` against the running stack,
-and — for the last one — while putting a working key into that stack so the half
-of the protocol the empty index had blocked could be re-run. None of these
-appear in any of the ten documents.
+test, and by a human working through `MANUAL-UI-CHECK.md` against the running
+stack — twice, because the first pass hit an empty index and the second one, run
+against a populated one, reached the four steps the first could not. `BEY-12`
+came from between the two, while putting a working key into the stack. None of
+these appear in any of the ten documents.
 
 That the manual pass returned five is worth stating plainly, because it is an
 argument about method rather than about this project: four of the five are
@@ -213,6 +214,9 @@ about.
 | BEY-10 | A 917 KB PNG is fetched on every page load to serve as a touch icon | `done` | `frontend/index.html` and `manifest.json` point `apple-touch-icon` at `chiliground-transparent.png` — 917 831 bytes, larger than the rest of the page put together, for an icon most visitors never see. It is also the wrong brand: the product is KR Labs, and `kr.svg` is 14 KB. **How:** the references now point at `kr.svg` and the PNG is deleted. **Why this way:** the alternative — recompressing the PNG — keeps a second, heavier copy of an identity that already has a canonical asset in the tree, and this branch had already moved `rel=icon` onto `kr.svg` under HYG-1. iOS ignores an SVG touch icon and falls back to the favicon, which is the same image; the cost of that is a home-screen icon on one platform, against a megabyte on every load for everyone. |
 | BEY-11 | A citation with no matching source is still focusable and clickable | `done` | Raised in the same manual pass, from reading the code the blocked steps could not exercise. Citation numbers are parsed out of the answer text and looked up in the citation list; when the lookup misses, `CleanFactInterface.jsx` rendered the `InlineCitation` anyway with `onClick={() => fact && handleFactClick(fact)}`. The result is a `<sup role="button" tabIndex={0}>` announced to a screen reader as "Show citation 7" that takes focus, takes a click, and does nothing — with no way for the user to tell it apart from one that works. **How:** the miss renders as plain muted text with no role, no tab stop and no handler. **Why this way:** the alternative is to keep the control and give it a failure message, which invents a UI for a state that should not be reachable. Removing a false affordance needs no design decision; adding an error surface does. **The linter has no opinion about it, measured rather than assumed:** `npm run lint` is clean on the code before the fix as well as after — run the way CI runs it, against the repository's own `node_modules` in a `node:20` container, because Biome ships a platform binary and the copy on disk here is the Linux one the stack installed. Biome reads the element as it is written; it is a false control only in the state where the lookup misses, and no rule reads states. **Not fixed, and deliberately so:** the focus ring on that element is `focus:ring-1` rather than `focus-visible`, 1px on a 0.65em superscript. Whether that is visible enough is a judgement that needs eyes on a populated index, which `BEY-9` currently prevents. |
 | BEY-12 | A provider that cannot answer is reported as a corpus that has nothing to say | `todo` | Found while making the stack usable for the re-run, and it is the reason two separate keys looked like the same empty index. **Two causes, measured on the running stack, one indistinguishable outcome.** An invalid key: `401 Invalid API Key`. A valid Groq key whose account cannot reach the model this demo pins: `404 The model moonshotai/kimi-k2-instruct-0905 does not exist or you do not have access to it` — the account lists 14 models and that is not one of them. In both cases the API answers `200 OK`, `/api/status` keeps reporting `llm_configured: true`, and the user reads "No relevant information found in the provided documents." **Retrieval had already succeeded**: three chunks came back, one of them containing the answer verbatim, and they were discarded by the layer above. **Where:** `packages/core/verbatim_core/extractors.py:655-657` and its async twin at `723-725` catch `except Exception`, log, and assign `[]` for that chunk; the response builder then renders the empty-result template, which is a claim about the documents. **Why this is the worst shape a failure can take here:** in a provenance product the empty answer is not a shrug, it is an assertion that the corpus does not contain the answer. `BEY-8` was the same family and milder — a green badge over an empty index; this one puts a false factual claim in the answer itself. **Why `todo` and not fixed in this pass:** the fix is to distinguish "extracted nothing" from "could not extract" — if every chunk's extraction raised, the pipeline has to say so instead of returning an empty answer, and the API has to report the provider rather than the corpus. That changes the failure contract of a published package, where callers currently get an empty answer and would start getting an exception, and it needs its own tests on both the sync and async paths. Recorded with the evidence rather than rushed in at the end of the branch. **What did ship in the meantime:** the model and endpoint are settings now (`CFG-4`), so reaching a working model no longer means editing source, and `README.md` and `.env.example` both name this symptom — every question answered "no relevant information found" — as what an unusable key or an unreachable model looks like from the outside. |
+| BEY-13 | The selection survives the query it belongs to | `done` | Second manual pass, step 5 — the step written for exactly this and green in the first pass by luck. Click a citation, ask a different question, and the new answer arrives with a highlight already ringed as if it had been clicked. **Why it is a real bug and not a cosmetic one:** `highlightedFactId` is a *position* in the citation array (`extractFacts` assigns `id: i`), not an identity, so the old selection re-applies to whatever citation happens to occupy that slot in the next answer — pointing the user at a passage they never selected, in a product whose whole claim is that what you see is what was cited. **How:** `handleSubmit` clears it before awaiting the request, and `goHome` clears it too. Before the request rather than after, so the old selection goes away when the new question is asked rather than surviving the wait. **Why the first pass missed it:** the leak only shows when the next answer has at least as many citations as the stale index. The first pass had `[3]` active and got a one-citation answer back, so nothing matched and the step looked clean — a false negative that depends on the model's output, which is why the reporter's note that a test must control the citation count is the useful half of the finding. **Verified in the browser, in the conditions that produce the bug:** citation `[1]` clicked (stale index 0), then a question whose answer carries three citations — so slot 0 exists — and no highlight comes back active. |
+| BEY-14 | A deleted image, invisible because the SPA fallback answers for it | `done` | Second manual pass, step 1: the landing screen showed a broken-image icon. `BEY-10` deleted `chiliground-transparent.png` and repointed the `apple-touch-icon`, but an `<img>` inside `CleanFactInterface.jsx` still asked for it. **The mechanism is the finding.** `frontend/nginx.conf` served `try_files $uri $uri/ /index.html`, so the missing PNG came back `200` with `Content-Type: text/html` and a body of `<!DOCTYPE html>`. No console error, no `404`, every network row green — the first pass's "all 30 requests returned 200" was true and meaningless. A check on status codes cannot see this class of defect at all; only the content type or `naturalWidth` can. **How, in two parts:** the `<img>` now points at `kr.svg`, the asset `BEY-10` already made canonical, and nginx answers `=404` for anything whose path ends in a file extension, keeping the fallback for client-side routes. `location /api/` became `^~ /api/` in the same change so a future endpoint ending in `.json` cannot be captured by the new regex. **Measured after:** `/chiliground-transparent.png` → `404`, `/kr.svg` → `200 image/svg+xml`, `/api/status` → `200` through the proxy, and the landing image reports `naturalWidth: 500` in the browser. |
+| BEY-15 | Activating a citation from the keyboard throws the user back to the top of the page | `done` | Raised in the second pass as a non-blocking note with a one-line fix in mind. It is not one line, and the diagnosis is worth more than the symptom: after `Enter` or `Space`, `document.activeElement` became `body` although the citation was still on screen. **Cause:** `InlineCitation`, the remark plugin and the whole `components` map for the answer were defined *inside* the render body, so every state change handed React a new element type and it unmounted and remounted the entire answer — including the focused element. Activating a citation sets state, so activation destroyed the node it was announced from. The same remount happened on every keystroke-driven render, which is also why the answer flickered. **How:** the citation element and the plugin moved to module scope, and `facts`, `groupedDocuments`, `handleFactClick` and the components map are memoised so their identity survives a re-render. No behaviour was redesigned; what changed is that React can now recognise the tree as the same tree. **Why not the cheaper fix:** re-focusing by selector after activation would restore the ring while leaving the remount — and a remounted subtree also loses scroll position, animation state and any future uncontrolled input in the answer. **Verified in the browser:** with the citation focused, a real `Enter` keeps `isConnected: true` on the same node, `document.activeElement` is still that `sup`, and the correct highlight goes active. |
 
 ## Continuous integration
 
@@ -287,9 +291,70 @@ finds this class of defect is a person following a script — which is the argum
 for `TST-4`, not against it: the pass also came back with a ranked list of what
 to automate, and the top item is exactly `BEY-7`.
 
-The filled report is kept as `MANUAL-UI-CHECK-RESULT.md`, unedited. Its blocked
-steps stay blocked in the record rather than being quietly re-run after the fix,
-because a protocol that only ever reports success is not evidence of anything.
+### Second pass, against a populated index
+
+`BEY-9`'s ingest path and `BEY-12`'s settings made the stack demonstrable, so the
+protocol was run again by the same person, and the four steps the empty index had
+blocked were finally exercised. **Six of eight steps passed; two failed, both new.**
+
+What the first pass could not check and the second could:
+
+- **Streaming order is real**, measured by polling the DOM: the screen clears at
+  4.8 s, sources arrive at 6.0 s, the answer with its citations at 8.6 s.
+- **Every citation leads to its own source.** For a three-citation answer, each
+  `[n]` selected the expected document tab and highlighted text identical to the
+  citation. This is the product's central claim and nothing had ever tested it.
+- **Keyboard activation works** — `Tab` reaches the citation, `Enter` and `Space`
+  both act, `Space` does not scroll the page.
+- **The console is clean, and now that means something.** In the first pass the
+  absence of React key warnings proved nothing, because no list had ever
+  rendered. This time lists of three, four and five items rendered and
+  re-rendered across a change of question.
+
+And two failures the first pass structurally could not reach:
+
+- **`BEY-13`** — a selection that survives the query it belongs to. Step 5 exists
+  for exactly this. It passed in the first run by luck: the leak only shows when
+  the next answer has at least as many citations as the stale index.
+- **`BEY-14`** — a deleted image still requested by a component, invisible
+  because nginx answered `200 text/html` for it. The first pass's "all 30
+  requests returned 200" was true and, it turns out, unable to see this.
+
+Plus **`BEY-15`**, raised there as a note about focus and worth more than its
+symptom: the answer subtree was being remounted on every state change.
+
+Recorded, not fixed, from the same pass:
+
+- **The source tabs are all labelled "README"** — five chunks of one document,
+  distinguishable only by a highlight-count badge, with the chunk heading visible
+  only after switching to the tab. Putting the heading on the tab is the obvious
+  answer and it is a UI design decision, not a defect repair.
+- **Two numbers under one word.** The panel counts five "documents" (chunks)
+  while `/api/status` reports `document_count: 2` (documents). Both are correct
+  and one of them has to be renamed; which one is the maintainer's vocabulary to
+  set, and it is the same question `CFG-4` and `BEY-9` circle.
+- **Two of three citations in one answer were near-duplicates.** That is
+  extraction quality on a demo model, not a UI defect, and this branch does not
+  tune prompts to flatter a screenshot.
+- **`frontend/build/`** was flagged as dead. It is untracked and matched by
+  `.gitignore` twice over, so there is nothing in the branch to delete — it is a
+  local artefact of whoever last ran `npm run build`. Reported here so the next
+  reader does not go looking for it in the tree.
+
+`noArrayIndexKey` stays off, with a sharper reason than before: its complaint is
+no longer hypothetical — `BEY-13` is precisely an index used as an identity — but
+turning it on means giving five render sites a stable key, which is a decision
+about how this UI addresses its own data rather than a lint fix. The number is
+measured, not guessed: `biome lint --only=suspicious/noArrayIndexKey` reports
+five. `useExhaustiveDependencies` is untouched by all of this; the reporter
+checked, and the missing reset was in the submit handler, not in a dependency
+array.
+
+The filled report is kept as `MANUAL-UI-CHECK-RESULT.md`. It now holds the second
+run; the first, with its blocked steps blocked, is in the history at `6432bee`
+and was deliberately not edited into a success. A protocol that only ever reports
+success is not evidence of anything — and the second run is worth having only
+because the first one is still readable.
 
 ## Review gate — API group
 

@@ -17,6 +17,25 @@ software is the way it is.
 <One or two lines: the decision and why. Link related files/PRs if useful.>
 -->
 
+## 2026-08-28 — Two calls from the second UI pass: reconcile instead of refocus, 404 instead of fallback
+
+The keyboard losing focus when a citation is activated looked like a missing
+`focus()` call. It was not: the citation element, the remark plugin and the
+answer's `components` map were all defined inside the render body, so every
+state change gave React a new element type and it remounted the whole answer.
+Re-focusing by selector would have hidden that and kept the remount, which also
+throws away scroll position and animation state. The identities are stable now —
+module scope for the element and the plugin, `useMemo`/`useCallback` for the
+rest — so React reconciles rather than rebuilds, and the focused node simply
+stays.
+
+Second: `nginx.conf` answered any missing path with `index.html`, which is right
+for a client-side route and wrong for a file. A deleted image came back `200
+text/html`, so it appeared in no console and in no status-code check. Paths that
+name a file now `=404`, and `/api/` became an `^~` prefix so a future endpoint
+ending in `.json` cannot fall into that rule. The fallback stays for everything
+that is not a file, because that is what it is for.
+
 ## 2026-08-28 — The model and its endpoint become settings; the choice stays the maintainer's
 
 CFG-4 asks which of the constants in `api/dependencies.py` are deliberate and
