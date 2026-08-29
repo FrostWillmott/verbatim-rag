@@ -133,11 +133,19 @@ no delta of its own, which is why it has no prefix.
 
 The 100/100 on open-source readiness is not a result. The report applies a
 domain no-op for a pure fork with no delta of its own and skips all 14 criteria;
-the score means "nothing applicable to assess", not "excellent". It also stops
-being true the moment this branch exists.
+the score means "nothing applicable to assess", not "excellent".
 
-**Which makes it the one score that will fall on a re-run, and that is expected
-rather than unfortunate.** Its eleven questions — purpose, licence, README,
+**Whether it falls on a re-run depends on which repository the instrument
+compares against, and the report says which.** Its own platform facts are
+`parent=FrostWillmott/verbatim-rag`, `source=KRLabsOrg/verbatim-rag`,
+`ahead_by=0`, `behind_by=0`, and the no-op fired because the head matched
+*both*. The audited copy is a fork of this repository, so against its parent it
+is `0/0` again after any sync or re-fork; the delta exists only against source,
+`audited-baseline` → `main`. If the check is against the parent, the no-op
+repeats and the 100 is again a skip rather than a result. If it is against
+source, the criteria are scored for real and the figure lands below 100 — which
+is the correct behaviour, not a regression. Its eleven questions — purpose,
+licence, README,
 docs, a contact channel, how to report a problem, conduct, a private disclosure
 path, versioning, honest support status, sensitive data — get asked for real
 once the fork has a delta. Two of them failed on a switch rather than on the
@@ -510,9 +518,10 @@ flipping. The pattern is the useful finding: where a refusal was the cheaper
 outcome, the hardest reading of the task is the one that got answered.
 
 **Two numbers did not survive.** The scoring self-check still said "the 38%
-measured here" after a later commit moved coverage to 40.93%, which lifts that
+measured here" after later commits moved coverage to 41.96%, which lifts that
 row's ceiling from 49 to 50 — a stale figure inside the one section that calls
-itself measured. And `BEY-12`'s row claimed two unit tests assert the raise
+itself measured, and one that went stale a second time (40.93%) before this
+pass re-measured it. And `BEY-12`'s row claimed two unit tests assert the raise
 where there are three; the tests were right and the count was not.
 
 The evaluation also said plainly that four of the seven angles it was pointed at
@@ -587,7 +596,7 @@ scoring it here would be worth nothing.
 |---|---:|---|---|
 | Security | 25 | **100** | Purely finding-driven, and none remain open |
 | Dead code | 57 | **59** | All six named deductions are now removed — the last, the −4 for the service layer, closed with `DEAD-4` — so the raw score is 100. It changes nothing: the report's cap of 59 for "findings on several surfaces at once" binds regardless, and this row has now been wrong twice in the same direction, first at four deductions and 91, then at five and 96, both times holding a deduction the register marked closed. The cap is why neither error moved the published figure, and the arithmetic is why they are recorded rather than quietly corrected |
-| Test quality | 42 | **≤ 50** | Only the coverage term is measurable, and not cleanly: the report's 14% counted `frontend/src` as 0% inside a project-wide estimate, while the 40.93% measured here has no frontend in its denominator at all. Like for like the figure is lower, so 50 is a ceiling rather than the conservative reading first claimed here. `0.7 × 54 + 0.3 × 40.93 = 50.1`; the criteria half is left at the report's own 54% on purpose, although the coverage-target criterion it scored 1/5 for is one this branch closed |
+| Test quality | 42 | **≤ 50** | Only the coverage term is measurable, and not cleanly: the report's 14% counted `frontend/src` as 0% inside a project-wide estimate, while the 41.96% measured here has no frontend in its denominator at all. Like for like the figure is lower, so 50 is a ceiling rather than the conservative reading first claimed here. `0.7 × 54 + 0.3 × 41.96 = 50.4`; the criteria half is left at the report's own 54% on purpose, although the coverage-target criterion it scored 1/5 for is one this branch closed |
 | Codebase hygiene | 71 | **≤ 87** | The finding half is mechanical: two findings remain, `HYG-2` and `HYG-5`, for `100 − 10 − 3 = 87`. An earlier version said 84, which counts a third residual finding the register does not have. The total is `min(criteria, 87)` and the criteria half is judgement, so this stays a ceiling |
 | CI/CD, Configuration, Dependency hygiene, Cognitive debt, AI readiness | | not computed | Each turns on a criteria sum that only an independent assessor should re-rate |
 
@@ -604,8 +613,12 @@ sixty-nine points.
 arithmetic says 91, because the multi-surface cap holds. The instrument is
 measuring breadth of remaining findings, not their weight.
 
-**Open-source readiness should now fall below 100.** Its 100 was a domain no-op
-for a fork with no delta of its own; this branch is exactly such a delta, so the
-report would score its fourteen criteria for real and land somewhere lower. That
-is the correct behaviour of the instrument, and worth saying before someone reads
-the old 100 as an achievement.
+**Open-source readiness will most likely read 100 again, and again as a no-op.**
+Its 100 came from `ahead_by=0` against the parent, and the parent of the audited
+copy is this repository — a fork of it is `0/0` against `main` whatever `main`
+contains. The delta is against source, `KRLabsOrg/verbatim-rag`, from
+`audited-baseline` to `main`. Only an instrument that compares with source will
+score the fourteen criteria for real and land below 100; an earlier version of
+this section predicted that fall unconditionally, which was a claim about a
+mechanism the report itself describes differently. Either way the old 100 is a
+skip, not an achievement.
