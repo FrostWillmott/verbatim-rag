@@ -715,3 +715,19 @@ request is open; all three workflows are green, across nine jobs. Claims about C
 here rested on rebuilding its environment locally until that happened, and the
 first real run repaid the difference by failing on two things no local
 reproduction could have caught.
+
+## 2026-08-29 — The readiness prediction is conditional on the parent, and was stated as certain
+
+The 2026-08-27 entry above predicted that open-source readiness "would now score
+its fourteen criteria for real and land lower". The report's own facts say why
+that is not assured: the no-op fired on `ahead_by=0, behind_by=0`, and the
+audited copy is a fork of *this* repository. Against that parent it is `0/0`
+after any sync or re-fork, regardless of what `main` carries; the delta exists
+only against source, `KRLabsOrg/verbatim-rag`. So the score falls only if the
+instrument compares with source. If it compares with the parent, 100 repeats and
+means the same skip as before.
+
+Recorded rather than corrected in place because the wrong version was a
+prediction made before the re-run, and the point of writing predictions down is
+that they can be found wrong. `AUDIT.md` now states the condition; the summary
+sent with the work states it the same way.
